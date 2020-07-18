@@ -4,40 +4,36 @@ A production-style game. A proof of concept Electron application.
 
 # Design
 
-A *factory building* consumes and produces inputs and outputs.
+## Buildings
 
-  * Belt inputs (a type and a maximum consumption rate in units per minute)
-  * Belt outputs (a type and a maximum production rate in units per minute)
+A building is represented as a polygon. A building can have input and output
+belt nodes that reside somewhere on the perimeter of the building polygon. A
+belt node can be connected to a belt that the building can either take units
+from or place units onto.
 
-A *belt* is a specialized building for moving solid items. It has a rate of
-units per minute, and it has a direction of travel.
+An input belt node is represented by an empty circle. An output belt node is
+represented by a filled circle inside another circle. On mouse over, the node
+grows slightly larger. On clicking, the node is selected and highlighted.
+Hitting escape or clicking on another node deselects the node.
 
-The types of buildings are:
+Different buildings may be placed in the world. Each building is available in a
+tool bar to select. After selecting a building from the tool bar, clicking
+anywhere in the world will place the building in that spot. If a building
+already exists that would overlap a newly placed building, no building is
+placed. Hitting escape or selecting another tool deselects the tool.
 
-  * Unit Buffer
-    - Description: Has a fixed internal storage that buffers the belt
-    - Inputs: 1, any
-    - Outputs: 1, any
-    - Attributes:
-        - buffer_first: If true, the buffer won't output units until its buffer is full
-        - buffer_size: Number of units within the buffer
-  * Splitter
-    - Description: Takes an unit of input and places it in one of its outputs on
-      a rotating basis. Goes as fast as possible
-    - Inputs: 1, any
-    - Outputs: 3, any
-  * Merger
-    - Description: Takes one of its inputs on a rotating basis and places it on
-      the output belt. Goes as fast as possible
-    - Inputs: 3, any
-    - Outputs: 1, any
-  * Source:
-    - Description: Produces units
-    - Inputs: 0
-    - Outputs: 1, specified in attribute
-    - Attributes:
-        - output_type: the type of unit outputted
-        - output_rate: the rate in which it will output units
+Clicking on a building in the world selects the building. Hitting escape or
+selecting another building or tool deselects the building. Selecting a building
+displays information about the building in a context info area of the screen.
+The context area displays the name of the building and a key-value list of
+useful information and statistics provided by the model. The context area also
+displays warning information about the building, such warning the use that one
+or more of its belt nodes are not connected.
 
+A building has a building state machine. The building state machine contains the
+following states:
 
-![example](readme-assembly.svg "Assembly")
+  * Not Connected: One or more belt nodes are not connected to a belt.
+  * Working: The building is processing materials taken from the input belts.
+  * Starved: The building is not processing materials and one ore more input belts are empty
+  * Blocked: The building
