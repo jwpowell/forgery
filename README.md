@@ -52,3 +52,27 @@ following states:
 
   * Disabled: The building is manually disabled.
 
+## Splitter
+
+A splitter is a building with one inputs and many outputs. In the working state,
+it moves the input resource to one of the outputs. The chosen output is cycled
+uniformly across all outputs.
+
+Splitters operate instantaneously on input. As soon as input is available, the
+input is moved to an output. This means that the splitter spends most of its
+time in the starved state. Any reporting of starvation of a factory should
+therefore omit splitters from the report. However, splitters can be blocked due
+to real factory blockages. Therefore, splitters must be part of any blockage
+reports.
+
+## Merger
+
+A merger is a building with one output and many inputs. The merger takes a
+resource uniformly from one of its input belts and places the resource on the
+output belt. The chosen input is cycled uniformly across all inputs.
+
+Mergers operate instantaneously on input. As soon as input is available, the
+input is moved to an output. This means that the merger spends most of its time
+in the starved state. Any reporting of starvation of a factory should therefore
+omit merger from the report. However, mergers can be blocked due to real factory
+blockages. Therefore, mergers must be part of any blockage reports.
