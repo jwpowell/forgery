@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg>
+<svg version="1.1" id="Layer_1"
+	xmlns="http://www.w3.org/2000/svg" width="400" height="400">
+
+	<line x1="10" y1="200" x2="390" y2="200" stroke="black" />
+	<circle cx="100" cy="200" r="10" stroke="black" fill="green" stroke-width="5"/>
+	<circle cx="150" cy="200" r="10" stroke="black" fill="blue" stroke-width="5"/>
+	<circle cx="180" cy="200" r="10" stroke="black" fill="red" stroke-width="5"/>
+	<circle cx="250" cy="200" r="10" stroke="black" fill="orange" stroke-width="5"/>
+	<rect x="10" y="175" width="50" height="50" stroke="black" fill="cyan" stroke-width="5"/>
+	<rect x="340" y="175" width="50" height="50" stroke="black" fill="magenta" stroke-width="5"/>
+</svg>
