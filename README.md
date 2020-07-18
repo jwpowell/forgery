@@ -30,10 +30,25 @@ useful information and statistics provided by the model. The context area also
 displays warning information about the building, such warning the use that one
 or more of its belt nodes are not connected.
 
+A building has one storage area for each belt. The building may have more
+internal storage depending on the type of building. 
+
 A building has a building state machine. The building state machine contains the
 following states:
 
-  * Not Connected: One or more belt nodes are not connected to a belt.
-  * Working: The building is processing materials taken from the input belts.
-  * Starved: The building is not processing materials and one ore more input belts are empty
-  * Blocked: The building
+  * Disconnected: One or more belt nodes are not connected to a belt.
+
+  * Transferring: The internal storage for the input belts are not completely
+    full, and the ones that aren't full have materials available on the belt.
+    
+  * Starved: The internal storage for the input belts are not completely full,
+    and at least one of the ones that aren't have empty belts.
+
+  * Working: The internal storage for the input belts is full and the internal
+    storage for the output belts are not.
+
+  * Blocked: The internal storage for the output belts are not completely empty
+    and their belts are full.
+
+  * Disabled: The building is manually disabled.
+
