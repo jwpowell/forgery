@@ -1,0 +1,31 @@
+{
+  "name": "forgery",
+  "version": "0.1.0",
+  "description": "A particularly amusing forgery",
+  "main": "app/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jwpowell/forgery.git"
+  },
+  "contributors": [
+    {
+      "name": "Wesley Powell"
+    },
+    {
+      "name": "Jeremy Powell"
+    }
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jwpowell/forgery/issues"
+  },
+  "homepage": "https://github.com/jwpowell/forgery#readme",
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^9.1.0"
+  }
+}
