@@ -1,0 +1,6 @@
+.building {
+    width: 10mm;
+    height: 10mm;
+    background-color: blue;
+    outline: 1mm solid black;
+}

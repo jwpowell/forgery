@@ -6,6 +6,15 @@
     <title>Hello World!</title>
     <!-- https://electronjs.org/docs/tutorial/security#csp-meta-tag -->
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
+
+    <link rel="stylesheet" href="style/toolbox.css">
+    <link rel="stylesheet" href="style/workspace.css">
+
+    <script src="app/event-emitter.js"></script>
+    <script src="app/grid.js"></script>
+    <script src="app/toolbox.js"></script>
+    <script src="app/workspace.js"></script>
+    <script src="app/forgery.js"></script>
 </head>
 
 <body>
@@ -16,6 +25,13 @@
     <script>document.write(process.versions.chrome)</script>,
     and Electron
     <script>document.write(process.versions.electron)</script>.
+
+    <header></header>
+    <main>
+        <nav id="toolbox"></nav>
+        <section id="workspace"></section>
+    </main>
+    <footer>v0.0.1</footer>
 </body>
 
 </html>

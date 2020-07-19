@@ -1,0 +1,13 @@
+.workspace {
+    display: inline-grid;
+    grid-column-gap: 0px;
+    grid-row-gap: 0px;
+    border: 1px solid black;
+}
+
+.workspace-square {
+    margin: 0px;
+    padding: 0px;
+    height: 1mm;
+    width: 1mm;
+}
