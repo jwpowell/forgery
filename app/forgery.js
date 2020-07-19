@@ -348,7 +348,7 @@ Forgery.prototype.run = function () {
 
 
 
-    clock.start();
+    //clock.start();
 };
 
 
