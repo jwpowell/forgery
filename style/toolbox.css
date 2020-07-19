@@ -1,0 +1,14 @@
+.toolbox {
+    display: inline-grid;
+    grid-column-gap: 0px;
+    grid-row-gap: 0px;
+    border: 1px solid black;
+}
+
+.toolbox-square {
+    margin: 0px;
+    padding: 0px;
+    height: 10mm;
+    width: 10mm;
+    border: 1px solid black;
+}
