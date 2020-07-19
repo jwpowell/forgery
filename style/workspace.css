@@ -11,3 +11,36 @@
     height: 1mm;
     width: 1mm;
 }
+
+.source {
+    width: 5mm;
+    height: 5mm;
+    background-color: yellow;
+}
+
+.building {
+    width: 10mm;
+    height: 10mm;
+    background-color: brown;
+}
+
+.building-idle {
+    outline: 1mm solid black;
+}
+
+.building-working {
+    outline: 1mm solid green;
+}
+
+.belt {
+    width: 1mm;
+    height: 1mm;
+}
+
+.belt-empty {
+    background-color: gray;
+}
+
+.belt-full {
+    background-color: black;
+}

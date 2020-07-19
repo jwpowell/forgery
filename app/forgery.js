@@ -43,10 +43,13 @@ Queue.prototype.forEach = function (func) {
 function Clock() {
     this.time = 0;
     this.eventEmitter = new EventEmitter();
+    this.running = false;
 
     const clock = this;
     this.ticker = setInterval(function () {
-        clock.tick();
+        if (clock.running) {
+            clock.tick();
+        }
     }, 1000);
 }
 Clock.events = {
@@ -71,6 +74,12 @@ Clock.prototype.tick = function () {
     if (this.time % 3600 == 0) {
         this.eventEmitter.emit(Clock.events.Hour);
     }
+};
+Clock.prototype.start = function () {
+    this.running = true;
+};
+Clock.prototype.stop = function () {
+    this.running = false;
 };
 
 function Material(name) {
@@ -113,8 +122,11 @@ Belt.prototype.run = function () {
         this.eventEmitter.emit(Belt.events.MaterialReady);
     }
 };
+Belt.prototype.hasMaterial = function () {
+    return this.contents.length() > 0
+};
 Belt.prototype.isFull = function () {
-    return this.contents.length >= this.capacity
+    return this.contents.length() >= this.capacity
 };
 Belt.prototype.canConsume = function (time) {
     // A belt can only consume one material per tick.
@@ -203,6 +215,14 @@ Building.prototype.connectOutput = function (belt) {
 
     return false;
 };
+Building.prototype.status = function () {
+    for (var i = 0; i < this.internalBelts.length; ++i) {
+        if (this.internalBelts[i].hasMaterial()) {
+            return true;
+        }
+    }
+    return false;
+};
 
 function Source(clock, material, numOutputs, materialPerSecond) {
     this.clock = clock;
@@ -277,11 +297,9 @@ Forgery.prototype.run = function () {
     const clock = new Clock();
 
     var totalCoalProduced = 0;
-    clock.on(Clock.events.Second, function () {
-        console.info("totalCoalProduced: " + totalCoalProduced);
-    });
 
-    const coalSource = new Source(clock, new Material("coal"), 1, 1);
+
+    const coalSource = new Source(clock, new Material("coal"), 1, 0.2);
     const sourceBelt = new Belt(clock, 10);
     coalSource.connectOutput(sourceBelt);
 
@@ -291,13 +309,46 @@ Forgery.prototype.run = function () {
     coalFactory.connectInput(sourceBelt);
     coalFactory.connectOutput(outputBelt);
 
-    outputBelt.on(Belt.events.MaterialReady, function () {
-        if (outputBelt.supply() != null) {
+    const coalFactoryBelt2 = new Belt(clock, 10);
+    const outputBelt2 = new Belt(clock, 1);
+    const coalFactory2 = new Building(1, 1, [coalFactoryBelt2]);
+    coalFactory2.connectInput(outputBelt);
+    coalFactory2.connectOutput(outputBelt2);
+
+    outputBelt2.on(Belt.events.MaterialReady, function () {
+        if (outputBelt2.supply() != null) {
             console.info("produced coal");
             totalCoalProduced = totalCoalProduced + 1
         }
     });
 
+
+
+    clock.on(Clock.events.Second, function () {
+        console.info("totalCoalProduced: " + totalCoalProduced);
+
+        this.workspace.load();
+
+        const sourceView = new SourceView(coalSource);
+        sourceView.place(new Coordinate(10, 10));
+        this.workspace.draw(sourceView);
+
+        const coalFactoryView = new BuildingView(coalFactory);
+        coalFactoryView.place(new Coordinate(30, 30));
+        this.workspace.draw(coalFactoryView);
+
+        const coalFactory2View = new BuildingView(coalFactory2);
+        coalFactory2View.place(new Coordinate(50, 20));
+        this.workspace.draw(coalFactory2View);
+
+        const sourceBeltView = new BeltView(sourceBelt);
+        sourceBeltView.place();
+        this.workspace.draw(sourceBeltView);
+    }.bind(this));
+
+
+
+    clock.start();
 };
 
 

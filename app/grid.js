@@ -2,6 +2,9 @@ function Coordinate(x, y) {
     this.x = x;
     this.y = y;
 }
+Coordinate.prototype.key = function () {
+    return this.x + "," + this.y;
+};
 
 function GridSquare(grid, coordinate) {
     var gridSquare = this;
@@ -22,6 +25,8 @@ function Grid(rootId, gridClassName, itemClassName) {
     this.gridClassName = gridClassName;
     this.itemClassName = itemClassName;
 
+    this.gridSquares = {};
+
     this.root = document.getElementById(this.rootId);
 
     this.eventEmitter = new EventEmitter();
@@ -41,11 +46,16 @@ Grid.prototype.generate = function (width, height) {
 
     for (hIndex = height - 1; hIndex >= 0; --hIndex) {
         for (wIndex = 0; wIndex <= width - 1; ++wIndex) {
-            var gridSquare = new GridSquare(this, new Coordinate(wIndex, hIndex));
+            const coordinate = new Coordinate(wIndex, hIndex);
+            var gridSquare = new GridSquare(this, coordinate);
+            this.gridSquares[coordinate.key()] = gridSquare;
             grid.appendChild(gridSquare.element);
         }
     }
 
     this.root.innerHTML = "";
     this.root.appendChild(grid);
+};
+Grid.prototype.getGridSquare = function (coordinate) {
+    return this.gridSquares[coordinate.key()];
 };
