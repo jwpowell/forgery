@@ -11,6 +11,11 @@ EventEmitter.prototype.on = function (eventName, listener) {
 };
 
 EventEmitter.prototype.emit = function (eventName) {
+    // Abort of there are no listeners.
+    if (this.events[eventName] == null) {
+        return
+    }
+
     var i = 0;
     var listeners = [];
     var length = 0;

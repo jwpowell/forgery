@@ -53,24 +53,24 @@ Clock.events = {
     Second: "clock-second",
     Minute: "clock-minute",
     Hour: "clock-hour",
-}
+};
 Clock.prototype.on = function (eventName, listener) {
     this.eventEmitter.on(eventName, listener);
 };
 Clock.prototype.tick = function () {
     ++this.time;
 
-    this.eventEmitter.emit(Clock.events.Second)
+    console.debug("time: " + this.time);
+
+    this.eventEmitter.emit(Clock.events.Second);
 
     if (this.time % 60 == 0) {
-        this.eventEmitter.emit(Clock.events.Minute)
+        this.eventEmitter.emit(Clock.events.Minute);
     }
 
     if (this.time % 3600 == 0) {
-        this.eventEmitter.emit(Clock.events.Hour)
+        this.eventEmitter.emit(Clock.events.Hour);
     }
-
-    console.debug("time: " + this.time);
 };
 
 function Material(name) {
@@ -89,9 +89,9 @@ function BeltMaterial(material, supplyTime) {
     this.supplyTime = supplyTime;
     this.material = material;
 }
-BeltMaterial.prototype.ready = function (time) {
-    this.supplyTime <= time ? true : false;
-}
+BeltMaterial.prototype.isReady = function (time) {
+    return this.supplyTime <= time ? true : false;
+};
 
 function Belt(clock, capacity) {
     this.clock = clock;
@@ -114,12 +114,12 @@ Belt.prototype.run = function () {
     }
 };
 Belt.prototype.isFull = function () {
-    return this.contents.length < this.capacity
+    return this.contents.length >= this.capacity
 };
 Belt.prototype.canConsume = function (time) {
     // A belt can only consume one material per tick.
     const material = this.contents.peekBack();
-    if (material != null && material.supplyTime != time) {
+    if (material == null || material.supplyTime != time) {
         return true;
     }
     return false;
@@ -142,9 +142,9 @@ Belt.prototype.consume = function (supplier) {
 };
 Belt.prototype.isMaterialReady = function () {
     // Check the next material on the belt.
-    var beltOut = this.contents.peek();
+    const beltOut = this.contents.peek();
     // Check if the next material is ready.
-    if (beltOut != null && beltOut.ready(time)) {
+    if (beltOut != null && beltOut.isReady(this.clock.time)) {
         return true;
     }
 
@@ -239,9 +239,9 @@ Source.prototype.run = function () {
     }
 };
 Source.prototype.supply = function () {
-    if (this.lastSuppliedTime != this.clock.time) {
-        this.lastSuppliedTime = this.clock.time;
-        return new Material();
+    const material = this.materialProduced.pop();
+    if (material != null) {
+        return material;
     }
 };
 Source.prototype.connectOutput = function (belt) {
