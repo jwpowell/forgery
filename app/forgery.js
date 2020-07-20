@@ -283,8 +283,8 @@ Forgery.prototype.setup = function () {
     this.toolbox = new Toolbox(tools);
     this.workspace = new Workspace(workspaceWidth, workspaceHeight);
 
-    this.toolbox.load();
-    this.workspace.load();
+    //this.toolbox.load();
+    //this.workspace.load();
 
     this.toolbox.on(Toolbox.events.SelectTool, function (tool) {
         console.debug("selected tool: " + tool.name);

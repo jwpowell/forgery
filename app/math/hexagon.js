@@ -12,7 +12,12 @@ const ASSERT = function (assertion, message = "assertion failed") {
 };
 
 const ASSERT_INSTANCE_OF = function (value, type) {
-    ASSERT(value instanceof type, value + " is not an instance of " + type.name);
+    const message = value + " is not an instance of " + type.name;
+    if (type === Boolean) {
+        ASSERT(typeof value === "boolean", message)
+        return;
+    }
+    ASSERT(value instanceof type, message);
 };
 
 const ASSERT_TYPE = function (value, typeName) {
@@ -96,6 +101,18 @@ class Hex { // Vector storage, cube constructor
         return this.add(this.direction(direction));
     }
 
+    rotateLeft(orientation) {
+        DEBUG && ASSERT_INSTANCE_OF(orientation, Orientation);
+
+        return new Hex(-this.s, -this.q, -this.r);
+    }
+
+    rotateRight(orientation) {
+        DEBUG && ASSERT_INSTANCE_OF(orientation, Orientation);
+
+        return new Hex(-this.r, -this.s, -this.q);
+    }
+
     lerp(b, t) {
         DEBUG && ASSERT_INSTANCE_OF(b, Hex);
         DEBUG && ASSERT_NUMBER(t);
@@ -120,6 +137,10 @@ class Hex { // Vector storage, cube constructor
         }
 
         return results;
+    }
+
+    hashCode() {
+        return this.q + "," + this.r + "," + this.s;
     }
 }
 
@@ -214,7 +235,13 @@ class Point {
         DEBUG && ASSERT_NUMBER(x);
         DEBUG && ASSERT_NUMBER(y);
     }
+
+    static origin() {
+        return ORIGIN;
+    }
 }
+
+const ORIGIN = new Point(0, 0);
 
 class Layout {
     constructor(orientation, size, origin) {
@@ -230,8 +257,8 @@ class Layout {
     hexToPixel(hex) {
         DEBUG && ASSERT_INSTANCE_OF(hex, Hex);
 
-        const x = (this.orientatation.f0 * hex.q + this.orientatation.f1 * hex.r) * this.size.x;
-        const y = (this.orientatation.f2 * hex.q + this.orientatation.f3 * hex.r) * this.size.y;
+        const x = (this.orientation.f0 * hex.q + this.orientation.f1 * hex.r) * this.size.x;
+        const y = (this.orientation.f2 * hex.q + this.orientation.f3 * hex.r) * this.size.y;
 
         return new Point(x + this.origin.x, y + this.origin.y);
     }
@@ -243,8 +270,8 @@ class Layout {
             (point.x - this.origin.x) / this.size.x,
             (point.y - this.origin.y) / this.size.y
         );
-        q = this.orientatation.b0 * pt.x + this.orientatation.b1 * pt.y;
-        r = this.orientatation.b2 * pt.x + this.orientatation.b3 * pt.y;
+        q = this.orientation.b0 * pt.x + this.orientation.b1 * pt.y;
+        r = this.orientation.b2 * pt.x + this.orientation.b3 * pt.y;
 
         return new FractionalHex(q, r, -q - r);
     }
@@ -252,18 +279,18 @@ class Layout {
     hexCornerOffset(corner) {
         DEBUG && ASSERT_INTEGER(corner);
 
-        angle = 2.0 * Math.PI * (this.orientatation.startAngle + corner) / 6.0;
+        const angle = 2.0 * Math.PI * (this.orientation.startAngle + corner) / 6;
 
         return new Point(this.size.x * Math.cos(angle), this.size.y * Math.sin(angle));
     }
 
     polygonCorners(hex) {
-        DEBUG && ASSERT_INTSTANCE_OF(hex, Hex);
+        DEBUG && ASSERT_INSTANCE_OF(hex, Hex);
 
         const corners = [];
         const center = this.hexToPixel(hex);
 
-        for (var i = 0; i < 6; ++i) {
+        for (let i = 0; i < 6; ++i) {
             const offset = this.hexCornerOffset(i);
             corners.push(new Point(center.x + offset.x, center.y + offset.y));
         }
@@ -271,4 +298,75 @@ class Layout {
         return corners;
     }
 }
+
+class HexMap {
+    constructor(type) {
+        READONLY(this, "map", {});
+    }
+
+    get(hex) {
+        DEBUG && ASSERT_INSTANCE_OF(hex, Hex);
+
+        return this.map[hex.hashCode()];
+    }
+
+    insert(hex) {
+        DEBUG && ASSERT_INSTANCE_OF(hex, Hex);
+
+        this.map[hex.hashCode()] = hex;
+    }
+
+    remove(hex) {
+        DEBUG && ASSERT_INSTANCE_OF(hex, Hex);
+
+        this.map.delete(hex.hashCode());
+    }
+
+    forEach(fn) {
+        const keys = Object.keys(this.map);
+
+        for (let i = 0; i < keys.length; ++i) {
+            const key = keys[i];
+            const hex = this.map[key];
+            fn(hex);
+        }
+    }
+
+    clear() {
+        const keys = Object.keys(this.map);
+
+        for (let i = 0; i < keys.length; ++i) {
+            const key = keys[i];
+            this.map.delete(key);
+        }
+    }
+
+    generateHexgon(radius) {
+        DEBUG && ASSERT_INTEGER(radius);
+
+        this.clear();
+
+        for (let q = -radius; q <= radius; ++q) {
+            const r1 = Math.max(-radius, -q - radius);
+            const r2 = Math.min(radius, -q + radius);
+
+            for (let r = r1; r <= r2; ++r) {
+                this.insert(new Hex(q, r, -q - r));
+            }
+        }
+    }
+
+    generateRectangle(width, height) {
+        DEBUG && ASSERT_INTEGER(width);
+        DEBUG && ASSERT_INTEGER(height);
+
+        for (let r = 0; r < height; ++r) {
+            rOffset = Math.floor(r / 2);
+            for (let q = -rOffset; q < width - rOffset; ++q) {
+                this.insert(new Hex(q, r, -q - r));
+            }
+        }
+    }
+}
+
 
