@@ -2,14 +2,17 @@
 <html>
 
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Hello World!</title>
     <!-- https://electronjs.org/docs/tutorial/security#csp-meta-tag -->
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
+    <meta http-equiv="Content-Security-Policy"
+        content="script-src 'self' app: 'unsafe-eval'; object-src 'self' app:;" />
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
 
-    <link rel="stylesheet" href="style/toolbox.css">
-    <link rel="stylesheet" href="style/workspace.css">
+    <link rel="stylesheet" href="style/toolbox.css" />
+    <link rel="stylesheet" href="style/workspace.css" />
 
+    <script type="module" src="engine/bootstrap.js"></script>
     <script src="app/math/hexagon.js"></script>
     <script src="app/event-emitter.js"></script>
     <script src="app/grid.js"></script>
@@ -17,6 +20,8 @@
     <script src="app/workspace.js"></script>
     <script src="app/forgery.js"></script>
     <script src="app/renderer.js"></script>
+    <script type="module" src="app/game.js"></script>
+
 </head>
 
 <body>
