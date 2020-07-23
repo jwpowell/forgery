@@ -1,7 +1,9 @@
 import { bootstrap, wasm } from '../engine/bootstrap.js';
 
 bootstrap(function () {
-    wasm.greet();
+    //wasm.greet();
 
-    // TODO: awesome stuff here
+    // TODO: awesome stuff here.
 });
+
+
