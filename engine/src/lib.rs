@@ -1,8 +1,17 @@
+use std::collections::HashMap;
+
 mod log;
 mod utils;
 
-mod geometry;
+mod cell;
+mod layout;
+mod renderer;
 mod world;
+
+use cell::{Hex, Point, Rectangle};
+use layout::{HexLayout, HexOrientation};
+use renderer::*;
+use world::WorldMap;
 
 use wasm_bindgen::prelude::*;
 
@@ -18,15 +27,28 @@ extern "C" {
 }
 
 #[wasm_bindgen]
-pub fn greet() {
-    use utils;
-
+pub fn run(target_id: &str) -> Result<(), JsValue> {
     utils::set_panic_hook();
+    log::debug(format!("target_id: {:?}", target_id));
 
-    log::debug("test log".into());
+    //alert(format!("target_id: {}", target_id).as_str());
 
-    alert("Hello, engine!");
+    let mut world = create_hex_world();
+    world.generate_hexgon(10);
+
+    world.render(target_id)?;
+
+    Ok(())
 }
 
-#[wasm_bindgen]
-pub fn world() {}
+fn create_hex_world() -> WorldMap<Hex, HexLayout> {
+    let hex_layout = HexLayout::new(
+        HexOrientation::flat(),
+        Rectangle::new(20.0, 20.0),
+        Point::origin(),
+    );
+
+    let hex_world = WorldMap::new(hex_layout);
+
+    hex_world
+}
