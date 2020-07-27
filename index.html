@@ -5,11 +5,12 @@
     <meta charset="UTF-8" />
     <title>Hello World!</title>
     <!-- https://electronjs.org/docs/tutorial/security#csp-meta-tag -->
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval';" />
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval' 'unsafe-inline';" />
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
 
     <link rel="stylesheet" href="style/toolbox.css" />
     <link rel="stylesheet" href="style/workspace.css" />
+    <link rel="stylesheet" href="style/building.css" />
 
     <script type="module" src="engine/bootstrap.js"></script>
     <script src="app/event-emitter.js"></script>

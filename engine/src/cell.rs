@@ -1,39 +1,51 @@
 // Based on: https://www.redblobgames.com/grids/hexagons/implementation.html
 
+use std::cmp::Ord;
+use std::fmt::Debug;
 use std::marker::Sized;
-use std::ops::{Add, Mul, Sub};
+use std::ops::{Add, Div, Mul, Sub};
 
 pub fn lerp(a: f32, b: f32, t: f32) -> f32 {
     a * (1.0 - t) + b * t
 }
 
-pub trait Cell: Sized {
+pub trait Cell: Debug + Sized + Clone {
     fn new(x: f32, y: f32, z: f32) -> Self;
     fn length(&self) -> i32;
     fn distance(&self, to: &Self) -> i32;
+    fn directions(&self) -> &[i32];
+    fn opposite_direction(&self, direction: i32) -> i32;
     fn direction(&self, direction: i32) -> Self;
     fn neighbor(&self, direction: i32) -> Self;
+    fn neighbors(&self) -> Vec<Self>;
     fn lerp(&self, rhs: &Self, t: f32) -> Self;
     fn round(&self) -> Self;
     fn linedraw(&self, to: &Self) -> Vec<Self>;
-    fn coords(&self) -> CellCoords;
+    fn coord(&self) -> CellCoord;
 }
 
-#[derive(Debug, Ord, Eq, PartialEq, PartialOrd, Hash)]
-pub struct CellCoords {
+#[derive(Debug, Ord, Eq, PartialEq, PartialOrd, Hash, Clone)]
+pub struct CellCoord {
     pub x: i32,
     pub y: i32,
     pub z: i32,
 }
 
-impl From<CellCoords> for String {
-    fn from(coords: CellCoords) -> Self {
+impl CellCoord {
+    pub fn new(x: i32, y: i32, z: i32) -> CellCoord {
+        CellCoord { x, y, z }
+    }
+}
+
+impl From<&CellCoord> for String {
+    fn from(coords: &CellCoord) -> Self {
         format!("{},{},{}", coords.x, coords.y, coords.z)
     }
 }
 
 const ORIGIN: Point = Point { x: 0.0, y: 0.0 };
 
+#[derive(Debug, PartialEq, PartialOrd)]
 pub struct Point {
     pub x: f32,
     pub y: f32,
@@ -73,13 +85,21 @@ impl Mul<f32> for &Point {
     }
 }
 
+impl Div<f32> for &Point {
+    type Output = Point;
+
+    fn div(self, rhs: f32) -> Point {
+        Point::new(self.x / rhs, self.y / rhs)
+    }
+}
+
 impl From<Point> for String {
     fn from(point: Point) -> Self {
         format!("{},{}", point.x, point.y)
     }
 }
 
-const HEX_DIRECTIONS: &'static [(f32, f32, f32); 6] = &[
+const HEX_DIRECTIONS: [(f32, f32, f32); 6] = [
     (1.0, 0.0, -1.0),
     (1.0, -1.0, 0.0),
     (0.0, -1.0, 1.0),
@@ -88,7 +108,7 @@ const HEX_DIRECTIONS: &'static [(f32, f32, f32); 6] = &[
     (0.0, 1.0, -1.0),
 ];
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub struct Hex {
     pub q: f32,
     pub r: f32,
@@ -122,6 +142,14 @@ impl Cell for Hex {
         (self - to).length()
     }
 
+    fn directions(&self) -> &[i32] {
+        &[0, 1, 2, 3, 4, 5]
+    }
+
+    fn opposite_direction(&self, direction: i32) -> i32 {
+        *&[3, 4, 5, 0, 1, 2][direction as usize]
+    }
+
     fn direction(&self, direction: i32) -> Hex {
         if !(0 <= direction && direction < 6) {
             panic!("invalid hex direction");
@@ -133,6 +161,15 @@ impl Cell for Hex {
 
     fn neighbor(&self, direction: i32) -> Self {
         self + &self.direction(direction)
+    }
+
+    fn neighbors(&self) -> Vec<Self> {
+        let mut neighbor_hexes: Vec<Hex> = Vec::new();
+        for direction in self.directions() {
+            neighbor_hexes.push(self.neighbor(*direction))
+        }
+
+        neighbor_hexes
     }
 
     fn lerp(&self, rhs: &Hex, t: f32) -> Hex {
@@ -178,8 +215,8 @@ impl Cell for Hex {
         results
     }
 
-    fn coords(&self) -> CellCoords {
-        CellCoords {
+    fn coord(&self) -> CellCoord {
+        CellCoord {
             x: self.q as i32,
             y: self.r as i32,
             z: self.s as i32,

@@ -1,0 +1,40 @@
+
+.building {
+    width: 10;
+    height: 10;
+    background-color: brown;
+    fill:brown;
+}
+
+.building-idle {
+    outline: 1mm solid black;
+}
+
+.building-working {
+    outline: 1mm solid green;
+}
+
+.building-node {
+    opacity: 0.0;
+}
+
+.building-node:hover {
+    opacity: 1.0;
+}
+
+.path-preview {
+    opacity: 0.0;
+}
+
+.belt {
+    width: 1mm;
+    height: 1mm;
+}
+
+.belt-empty {
+    background-color: gray;
+}
+
+.belt-full {
+    background-color: black;
+}

@@ -3,11 +3,13 @@ use std::f32::consts::PI;
 use crate::cell::{Cell, Hex, Point, Rectangle};
 
 pub trait Layout {
-    type T: Cell;
-    fn cell_to_pixel(&self, cell: &Self::T) -> Point;
-    fn pixel_to_cell(&self, point: &Point) -> Self::T;
+    type C: Cell;
+    fn cell_to_pixel(&self, cell: &Self::C) -> Point;
+    fn pixel_to_cell(&self, point: &Point) -> Self::C;
     fn cell_corner_offset(&self, corner: i32) -> Point;
-    fn polygon_corners(&self, cell: &Self::T) -> Vec<Point>;
+    fn polygon_corners(&self, cell: &Self::C) -> Vec<Point>;
+    fn polygon_edge_center(&self, cell: &Self::C, direction: i32) -> Point;
+    fn origin(&self) -> &Point;
 }
 
 pub struct HexOrientation {
@@ -69,7 +71,7 @@ impl HexLayout {
 }
 
 impl Layout for HexLayout {
-    type T = Hex;
+    type C = Hex;
     fn cell_to_pixel(&self, hex: &Hex) -> Point {
         &self.origin
             + &Point::new(
@@ -100,13 +102,25 @@ impl Layout for HexLayout {
 
     fn polygon_corners(&self, cell: &Hex) -> Vec<Point> {
         let mut corners: Vec<Point> = Vec::with_capacity(6);
-        let center = self.cell_to_pixel(&cell);
+        let center = &self.origin; //self.cell_to_pixel(&cell);
 
         for i in 0..6 {
             let offset = self.cell_corner_offset(i);
-            corners.push(&center + &offset);
+            corners.push(center + &offset);
         }
 
         corners
+    }
+
+    fn polygon_edge_center(&self, cell: &Hex, direction: i32) -> Point {
+        let neighbor_cell = cell.neighbor(direction);
+        let neighbor_center = &self.cell_to_pixel(&neighbor_cell);
+        let cell_center = &self.cell_to_pixel(cell);
+
+        &(cell_center - neighbor_center) / 2.0
+    }
+
+    fn origin(&self) -> &Point {
+        &self.origin
     }
 }
