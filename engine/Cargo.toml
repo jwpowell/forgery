@@ -38,6 +38,14 @@ features = [
     'EventListener',
     'MouseEvent',
     'console',
+    'DomRect',
+    'Element',
+    'Event',
+    'EventTarget',
+    'SvgElement',
+    'SvgPoint',
+    'SvgsvgElement',
+    'SvgMatrix',
 ]
 
 [dev-dependencies]

@@ -1,17 +1,64 @@
+use std::cell::{Ref, RefCell};
 use std::cmp;
+use std::collections::HashMap;
 use std::convert::From;
 use std::error::Error;
 use std::fmt;
 
-use crate::cell::{Cell, CellCoord, Point};
-use crate::game_view;
-use crate::layout::Layout;
+use crate::cell::{Cell, CellCoord, Hex, Point, Rectangle};
+use crate::game_view::{BeltView, BuildingState, BuildingView, GameStateView};
+use crate::layout::{HexLayout, HexOrientation, Layout};
 use crate::log;
 use crate::world::WorldMap;
 
-use web_sys::{Document, Element};
+use web_sys::{Document, Element, Event, MouseEvent, SvgElement, SvgsvgElement};
 
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::*;
+
+//we can't have mutable statics by default so we use this to enable it
+thread_local! {
+    pub static WORLD: RefCell<WorldMap<Hex, HexLayout> > = RefCell::new(
+        create_hex_world()
+    );
+}
+
+fn create_hex_world() -> WorldMap<Hex, HexLayout> {
+    let hex_layout = HexLayout::new(
+        HexOrientation::flat(),
+        Rectangle::new(10.0, 10.0),
+        Point::new(0.0, 0.0),
+    );
+
+    let mut factory_1_nodes: HashMap<CellCoord, bool> = HashMap::new();
+    factory_1_nodes.insert(CellCoord::new(1, 1, 1), false);
+
+    let factory_1 = BuildingView::new(
+        CellCoord::new(-4, -2, 6),
+        factory_1_nodes,
+        BuildingState::Working,
+    );
+
+    let mut factory_2_nodes: HashMap<CellCoord, bool> = HashMap::new();
+    factory_2_nodes.insert(CellCoord::new(0, 1, 1), false);
+
+    let factory_2 = BuildingView::new(
+        CellCoord::new(-1, -4, 5),
+        factory_2_nodes,
+        BuildingState::Working,
+    );
+
+    let game_state_view = GameStateView::new(&[factory_1, factory_2], &[]);
+
+    let hex_world = WorldMap::new(hex_layout, game_state_view);
+
+    hex_world
+}
+
+#[wasm_bindgen]
+extern "C" {
+    fn alert(s: &str);
+}
 
 pub fn get_document() -> Result<Document, RenderError> {
     // Use `web_sys`'s global `window` function to get a handle on the global window object.
@@ -26,6 +73,16 @@ pub fn get_target(document: &Document, target_id: &str) -> Result<Element, Rende
     Ok(document
         .get_element_by_id(target_id)
         .expect(format!("target_id does not exist: {}", target_id).as_str()))
+}
+
+pub fn add_event<H>(el: &Element, event_type: &str, event_listener: H)
+where
+    H: 'static + FnMut(Event),
+{
+    let cl = Closure::wrap(Box::new(event_listener) as Box<dyn FnMut(_)>);
+    el.add_event_listener_with_callback(event_type, cl.as_ref().unchecked_ref())
+        .unwrap();
+    cl.forget();
 }
 
 #[derive(Debug)]
@@ -77,7 +134,13 @@ impl<C: Cell, L: Layout<C = C>> Renderer for WorldMap<C, L> {
 
         // Add the root svg container.
         let svg = document.create_element_ns(Some("http://www.w3.org/2000/svg"), "svg")?;
-        svg.set_attribute("viewBox", "-250 -250 500 500")?;
+        svg.set_attribute("id", "world_view")?;
+        let view_box_min_x = -200;
+        let view_box_min_y = -200;
+        svg.set_attribute(
+            "viewBox",
+            format!("{:?} {:?} 500 500", view_box_min_x, view_box_min_y).as_str(),
+        )?;
 
         let layer_background =
             document.create_element_ns(Some("http://www.w3.org/2000/svg"), "g")?;
@@ -122,6 +185,59 @@ impl<C: Cell, L: Layout<C = C>> Renderer for WorldMap<C, L> {
 
         target.append_child(&svg)?;
 
+        // TODO: cannot borrow world because the closure can outlive it. world needs to be a &'static so JS callback closures and operate on it.
+        add_event(&svg, "click", move |e: Event| {
+            e.prevent_default();
+            let btn = e.clone().dyn_into::<MouseEvent>().unwrap().button();
+            if btn == 0 {
+                //alert(format!("left click").as_str());
+            } else if btn == 2 {
+                //alert(format!("right click").as_str());
+            }
+
+            let event = e.clone().dyn_into::<MouseEvent>().unwrap();
+
+            //alert(format!("mousedown: {:?},{:?}", event.screen_x(), event.screen_y()).as_str());
+
+            // // Create an SVGPoint for future math
+            // var pt = svg.createSVGPoint();
+
+            // // Get point in global SVG space
+            // function cursorPoint(evt){
+            //   pt.x = evt.clientX; pt.y = evt.clientY;
+            //   return pt.matrixTransform(svg.getScreenCTM().inverse());
+            // }
+
+            let svg_target = event
+                .current_target()
+                .unwrap()
+                .dyn_into::<SvgsvgElement>()
+                .unwrap();
+            let svg_point = svg_target.create_svg_point();
+            svg_point.set_x(event.client_x() as f32); // + view_box_min_x as f32);
+            svg_point.set_y(event.client_y() as f32); //+ view_box_min_y as f32);
+            let svg_matrix = svg_target.get_screen_ctm().unwrap().inverse().unwrap();
+            let svg_point = svg_point.matrix_transform(&svg_matrix);
+
+            let point = Point::new(svg_point.x(), svg_point.y());
+            WORLD.with(|w| {
+                let clicked_cell = w.borrow().layout.pixel_to_cell(&point);
+                alert(
+                    format!(
+                        "mousedown: client {:?},{:?} svg {:?},{:?} cell {:?},{:?},{:?}",
+                        event.client_x(),
+                        event.client_y(),
+                        svg_point.x(),
+                        svg_point.y(),
+                        clicked_cell.coord().x,
+                        clicked_cell.coord().y,
+                        clicked_cell.coord().z,
+                    )
+                    .as_str(),
+                );
+            });
+        });
+
         Ok(())
     }
 }
@@ -149,15 +265,22 @@ impl<C: Cell, L: Layout<C = C>> WorldMap<C, L> {
 
         // Set mouseover text to coordinate.
         let title = document.create_element_ns(Some("http://www.w3.org/2000/svg"), "title")?;
-        title.set_inner_html(String::from(&cell.coord()).as_str());
+        title.set_inner_html(
+            format!(
+                "Cell:{:?} Point:{:?}",
+                String::from(&cell.coord()),
+                self.layout.cell_to_pixel(&cell)
+            )
+            .as_str(),
+        );
         polygon.append_child(&title)?;
-
-        let cell_center = self.layout.cell_to_pixel(cell);
-        polygon.set_attribute(
-            "transform",
-            format!("translate({},{})", cell_center.x, cell_center.y).as_str(),
-        )?;
-
+        /*
+                let cell_center = self.layout.cell_to_pixel(cell);
+                polygon.set_attribute(
+                    "transform",
+                    format!("translate({},{})", cell_center.x, cell_center.y).as_str(),
+                )?;
+        */
         target.append_child(&polygon)?;
 
         Ok(())

@@ -102,11 +102,11 @@ impl Layout for HexLayout {
 
     fn polygon_corners(&self, cell: &Hex) -> Vec<Point> {
         let mut corners: Vec<Point> = Vec::with_capacity(6);
-        let center = &self.origin; //self.cell_to_pixel(&cell);
+        let center = self.cell_to_pixel(&cell);
 
         for i in 0..6 {
             let offset = self.cell_corner_offset(i);
-            corners.push(center + &offset);
+            corners.push(&center + &offset);
         }
 
         corners
