@@ -1,43 +1,68 @@
 use std::cmp;
 use std::cmp::{Ord, Ordering, Reverse};
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 
-use crate::cell::{Cell, CellCoord};
-use crate::game_view::GameStateView;
-use crate::layout::Layout;
-use crate::log;
+use super::cell::{Cell, CellCoord};
+use super::layout::Layout;
+use super::logging::{debug, info};
+use super::renderer::{create_svg, get_document, get_target, Layer, RenderError, Renderable};
 
-pub struct WorldMap<C: Cell, L: Layout<C = C>> {
-    pub map: HashMap<CellCoord, C>,
+use web_sys::{Document, Element, Event, MouseEvent, SvgElement, SvgsvgElement};
+
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::*;
+
+// TODO: This will eventually be more complex and involve movement costs, etc.
+type Collisions = HashSet<CellCoord>;
+
+pub struct World<C, L>
+where
+    C: Cell,
+    L: Layout<C = C>,
+{
+    pub base_map: HashSet<CellCoord>,
+    pub layers: Vec<Layer>,
     pub layout: L,
-    pub game_state: GameStateView,
 }
 
-impl<C: Cell, L: Layout<C = C>> WorldMap<C, L> {
-    pub fn new(layout: L, game_state: GameStateView) -> WorldMap<C, L> {
-        WorldMap {
-            map: HashMap::new(),
+impl<C, L> World<C, L>
+where
+    C: Cell,
+    L: Layout<C = C>,
+{
+    pub fn new(layout: L) -> World<C, L> {
+        World {
+            base_map: HashSet::new(),
+            layers: Vec::new(),
             layout: layout,
-            game_state: game_state,
         }
     }
 
-    pub fn generate_hexgon(&mut self, radius: i32) {
-        self.map.clear();
+    pub fn render(&self, target_id: &str) -> Result<(), RenderError> {
+        debug("rendering world".to_owned());
 
-        for q in -radius..=radius {
-            let r1 = cmp::max(-radius, -q - radius);
-            let r2 = cmp::min(radius, -q + radius);
+        let document = get_document()?;
+        let target = get_target(&document, target_id)?;
 
-            for r in r1..=r2 {
-                let cell = C::new(q as f32, r as f32, (-q - r) as f32);
-                self.map.insert(cell.coord(), cell);
+        let svg_view = create_svg(&document, -200, -200, 500, 500)?;
+
+        for layer in &self.layers {
+            let layer_element = layer.render(&document, &target, &self.layout)?;
+
+            for (_, sprite) in &layer.sprites {
+                sprite.render(&document, &layer_element, &self.layout)?;
             }
+
+            svg_view.append_child(&layer_element)?;
         }
+
+        target.append_child(&svg_view)?;
+
+        Ok(())
     }
 
-    pub fn shortest_path(&self, from: &C, to: &C) -> Option<Vec<C>> {
-        a_star_search(from, to, &self.game_state.collision_set)
+    pub fn shortest_path(&self, from: &C, to: &C, collisions: &Collisions) -> Option<Vec<C>> {
+        a_star_search(from, to, &self.base_map, collisions)
     }
 }
 
@@ -77,8 +102,13 @@ fn heuristic(a: &CellCoord, b: &CellCoord) -> i32 {
     (a.x - b.x).abs() + (a.y - b.y).abs() + (a.z - b.z).abs()
 }
 
-fn a_star_search<C: Cell>(start: &C, end: &C, collisions: &HashSet<CellCoord>) -> Option<Vec<C>> {
-    log::debug(format!("=============================="));
+fn a_star_search<C: Cell>(
+    start: &C,
+    end: &C,
+    base_map: &HashSet<CellCoord>,
+    collisions: &HashSet<CellCoord>,
+) -> Option<Vec<C>> {
+    debug(format!("=============================="));
     let mut frontier: BinaryHeap<Reverse<CellPriority<C>>> = BinaryHeap::new();
     frontier.push(Reverse(CellPriority::new(start.clone(), 0)));
 
@@ -93,45 +123,45 @@ fn a_star_search<C: Cell>(start: &C, end: &C, collisions: &HashSet<CellCoord>) -
             // Safety break;
             break;
         }
-        log::debug(format!(
+        debug(format!(
             "START frontier peek {:?} {:?}",
             frontier.peek().unwrap().0.cell.coord(),
             frontier.peek().unwrap().0.priority,
         ));
-        log::debug(format!("frontier size: {:?}", frontier.len()));
+        debug(format!("frontier size: {:?}", frontier.len()));
         if let Some(current) = frontier.pop() {
-            log::debug(format!("frontier size: {:?}", frontier.len()));
-            log::debug(format!("  current: {:?}", current.0.cell.coord()));
+            debug(format!("frontier size: {:?}", frontier.len()));
+            debug(format!("  current: {:?}", current.0.cell.coord()));
             if current.0.cell.coord() == end.coord() {
                 // Stop if we have reached the end.
 
-                log::info("  found a path".to_owned());
+                info("  found a path".to_owned());
                 let mut path: Vec<C> = Vec::new();
 
                 path.push(end.clone());
 
-                log::info(format!("path: {:?}", &end.coord()));
+                info(format!("path: {:?}", &end.coord()));
 
                 let mut previous = came_from.get(&end.coord()).unwrap();
                 while previous.cell.coord() != start.coord() {
-                    log::info(format!("path: {:?}", &previous.cell.coord()));
+                    info(format!("path: {:?}", &previous.cell.coord()));
                     path.push(previous.cell.clone());
                     previous = came_from.get(&previous.cell.coord()).unwrap();
                 }
 
                 path.push(start.clone());
-                log::info(format!("path: {:?}", &start.coord()));
+                info(format!("path: {:?}", &start.coord()));
 
                 path.reverse();
-                log::info("DONE".to_owned());
+                info("DONE".to_owned());
                 return Some(path);
             }
 
             for next in &current.0.cell.neighbors() {
-                if collisions.contains(&next.coord()) {
+                if !base_map.contains(&next.coord()) || collisions.contains(&next.coord()) {
                     continue;
                 }
-                log::debug(format!("next: {:?}", &next.coord()));
+                debug(format!("next: {:?}", &next.coord()));
                 let current_cost = cost_so_far
                     .get(&current.0.cell.coord())
                     .or(Some(&0))
@@ -142,21 +172,21 @@ fn a_star_search<C: Cell>(start: &C, end: &C, collisions: &HashSet<CellCoord>) -
                 if !cost_so_far.contains_key(&next.coord()) || new_cost < next_cost {
                     cost_so_far.insert(next.coord(), new_cost);
                     let priority = new_cost + heuristic(&end.coord(), &next.coord());
-                    log::debug(format!("  priority {:?}", priority));
+                    debug(format!("  priority {:?}", priority));
                     frontier.push(Reverse(CellPriority::new(next.clone(), priority)));
-                    log::debug(format!(
+                    debug(format!(
                         "  frontier peek {:?}",
                         frontier.peek().unwrap().0.cell.coord()
                     ));
-                    log::debug(format!("frontier size: {:?}", frontier.len()));
+                    debug(format!("frontier size: {:?}", frontier.len()));
                     came_from.insert(next.coord(), current.0.clone());
                 }
             }
-            log::debug(format!(
+            debug(format!(
                 "  frontier peek {:?}",
                 frontier.peek().unwrap().0.cell.coord()
             ));
-            log::debug(format!("frontier size: {:?}", frontier.len()));
+            debug(format!("frontier size: {:?}", frontier.len()));
         }
     }
 

@@ -45,7 +45,7 @@ impl From<&CellCoord> for String {
 
 const ORIGIN: Point = Point { x: 0.0, y: 0.0 };
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Point {
     pub x: f32,
     pub y: f32,
@@ -93,8 +93,8 @@ impl Div<f32> for &Point {
     }
 }
 
-impl From<Point> for String {
-    fn from(point: Point) -> Self {
+impl From<&Point> for String {
+    fn from(point: &Point) -> Self {
         format!("{},{}", point.x, point.y)
     }
 }
