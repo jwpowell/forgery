@@ -7,7 +7,7 @@ rustup target add wasm32-unknown-unknown
 cargo install --version 0.2.67 wasm-bindgen-cli
 
 cargo build --target wasm32-unknown-unknown --release
-rm -r wasm
+rm -rf wasm
 mkdir -p wasm
 wasm-bindgen \
 	target/wasm32-unknown-unknown/release/engine.wasm \
