@@ -14,7 +14,7 @@ use crate::engine::{
 // use super::building::{BuildingState, BuildingView};
 // use super::world::{GameStateView, WORLD};
 
-use web_sys::{Document, Element, Event, MouseEvent, SvgElement, SvgsvgElement};
+use web_sys::{Document, Element, Event, KeyEvent, MouseEvent, SvgElement, SvgsvgElement};
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::*;
@@ -50,9 +50,29 @@ impl From<&UserEvent> for &str {
     }
 }
 
-fn add_event<H>(el: &Element, user_event: &UserEvent, event_listener: H)
+pub fn add_event<H>(el: &Element, user_event: &UserEvent, event_listener: H)
 where
     H: 'static + FnMut(Event),
+{
+    let cl = Closure::wrap(Box::new(event_listener) as Box<dyn FnMut(_)>);
+    el.add_event_listener_with_callback(user_event.into(), cl.as_ref().unchecked_ref())
+        .unwrap();
+    cl.forget();
+}
+
+pub fn add_mouse_event<H>(el: &Element, user_event: &UserEvent, event_listener: H)
+where
+    H: 'static + FnMut(MouseEvent),
+{
+    let cl = Closure::wrap(Box::new(event_listener) as Box<dyn FnMut(_)>);
+    el.add_event_listener_with_callback(user_event.into(), cl.as_ref().unchecked_ref())
+        .unwrap();
+    cl.forget();
+}
+
+pub fn add_key_event<H>(el: &Element, user_event: &UserEvent, event_listener: H)
+where
+    H: 'static + FnMut(KeyEvent),
 {
     let cl = Closure::wrap(Box::new(event_listener) as Box<dyn FnMut(_)>);
     el.add_event_listener_with_callback(user_event.into(), cl.as_ref().unchecked_ref())
@@ -224,19 +244,21 @@ impl Shape {
     }
 }
 
-#[derive(Debug)]
+
+
+#[derive(Debug, Clone)]
 pub struct Sprite {
     id: String,
     shape: Shape,
-    position: Point,
+    pub position: Point,
     texture: Texture,
     visible: bool,
 }
 
 impl Sprite {
-    pub fn new(shape: &Shape, position: &Point, texture: &Texture) -> Sprite {
+    pub fn new(id: &str, shape: &Shape, position: &Point, texture: &Texture) -> Sprite {
         Sprite {
-            id: "sprite-".to_owned() + String::from(position).as_str(),
+            id: id.to_owned(),
             shape: shape.clone(),
             position: position.clone(),
             texture: texture.clone(),
@@ -329,6 +351,7 @@ impl Renderable for Sprite {
     {
         // Group all of a sprites data together.
         let sprite_view = document.create_element_ns(SVG_NS, "g")?;
+        sprite_view.set_attribute("id", self.id())?;
 
         // A sprite is defined as a polygon of any shape.
         let mut width = 0.0;
@@ -385,7 +408,6 @@ impl Renderable for Sprite {
             }
         };
 
-        sprite_polygon.set_attribute("id", self.id())?;
         sprite_polygon.set_attribute("style", self.texture.style_str().as_str())?;
 
         // Add the polygon shape to the sprite group.

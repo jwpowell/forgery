@@ -2,10 +2,10 @@ use std::cmp;
 use std::cmp::{Ord, Ordering, Reverse};
 use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 
-use super::cell::{Cell, CellCoord};
+use super::cell::{Cell, CellCoord, Point};
 use super::layout::Layout;
 use super::logging::{debug, info};
-use super::renderer::{create_svg, get_document, get_target, Layer, RenderError, Renderable};
+use super::renderer::{create_svg, get_document, get_target, Layer, RenderError, Renderable, UserEvent, add_event, add_mouse_event, add_key_event};
 
 use web_sys::{Document, Element, Event, MouseEvent, SvgElement, SvgsvgElement};
 
@@ -23,6 +23,7 @@ where
     pub base_map: HashSet<CellCoord>,
     pub layers: Vec<Layer>,
     pub layout: L,
+    svg_view: Option<SvgsvgElement>,
 }
 
 impl<C, L> World<C, L>
@@ -35,10 +36,11 @@ where
             base_map: HashSet::new(),
             layers: Vec::new(),
             layout: layout,
+            svg_view: None,
         }
     }
 
-    pub fn render(&self, target_id: &str) -> Result<(), RenderError> {
+    pub fn render(&mut self, target_id: &str) -> Result<(), RenderError> {
         debug("rendering world".to_owned());
 
         let document = get_document()?;
@@ -58,12 +60,44 @@ where
 
         target.append_child(&svg_view)?;
 
+        let svg_target = svg_view
+                .dyn_into::<SvgsvgElement>()
+                .unwrap();
+        self.svg_view = Some(svg_target);
+
         Ok(())
     }
 
     pub fn shortest_path(&self, from: &C, to: &C, collisions: &Collisions) -> Option<Vec<C>> {
         a_star_search(from, to, &self.base_map, collisions)
     }
+
+    pub fn event_point(&self, event: &MouseEvent) -> Point {
+        // Get point in global SVG space
+        let svg_target = self.svg_view.as_ref().expect("svg not set");
+        let svg_matrix = svg_target.get_screen_ctm().expect("failed to get screen ctm").inverse().expect("failed to get inverse");
+        let svg_point = svg_target.create_svg_point();
+        svg_point.set_x(event.client_x() as f32);
+        svg_point.set_y(event.client_y() as f32);
+        let svg_point = svg_point.matrix_transform(&svg_matrix);
+
+        Point::new(svg_point.x(), svg_point.y())
+    }
+
+    pub fn event_cell(&self, event: &MouseEvent) -> C {
+        let pixel = self.event_point(event);
+        self.layout.pixel_to_cell(&pixel)
+    }
+
+    pub fn on_mouse_event<H>(&self, event: UserEvent, handler: H) -> Result<(), JsValue>
+    where
+        H: 'static + FnMut(MouseEvent),
+    {
+        add_mouse_event(&get_document()?.body().expect("body does not exist").as_ref(), &event, handler);
+
+        Ok(())
+    }
+
 }
 
 #[derive(Debug, Clone)]

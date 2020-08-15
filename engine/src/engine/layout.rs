@@ -88,7 +88,7 @@ impl Layout for HexLayout {
         let q = pt.x * self.orientation.b0 + pt.y * self.orientation.b1;
         let r = pt.x * self.orientation.b2 + pt.y * self.orientation.b3;
 
-        Hex::new(q, r, -q - r)
+        Hex::new(q, r, -q - r).round()
     }
 
     fn cell_corner_offset(&self, corner: i32) -> Point {
