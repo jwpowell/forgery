@@ -38,14 +38,14 @@ pub enum UserEvent {
 impl From<&UserEvent> for &str {
     fn from(event: &UserEvent) -> Self {
         match event {
-            MouseClick => "click",
-            MouseDown => "mousedown",
-            MouseUp => "mouseup",
-            MouseMove => "mousemove",
-            MouseOver => "mouseover",
-            MouseOut => "mouseout",
-            KeyDown => "keydown",
-            KeyUp => "keyup",
+            UserEvent::MouseClick => "click",
+            UserEvent::MouseDown => "mousedown",
+            UserEvent::MouseUp => "mouseup",
+            UserEvent::MouseMove => "mousemove",
+            UserEvent::MouseOver => "mouseover",
+            UserEvent::MouseOut => "mouseout",
+            UserEvent::KeyDown => "keydown",
+            UserEvent::KeyUp => "keyup",
         }
     }
 }
@@ -243,8 +243,6 @@ impl Shape {
         }
     }
 }
-
-
 
 #[derive(Debug, Clone)]
 pub struct Sprite {

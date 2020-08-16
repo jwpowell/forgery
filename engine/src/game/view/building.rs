@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::engine::CellCoord;
+use crate::engine::{CellCoord, rng};
 
 #[derive(Debug, Clone)]
 pub enum BuildingState {
@@ -25,22 +25,24 @@ impl From<&BuildingState> for String {
 }
 
 #[derive(Debug, Clone)]
-pub struct BuildingView {
+pub struct Building {
+    pub id: u32,
     pub coord: CellCoord,
     pub state: BuildingState,
     nodes: HashMap<CellCoord, bool>,
 }
 
-impl BuildingView {
+impl Building {
     pub fn new(
         coord: CellCoord,
         nodes: HashMap<CellCoord, bool>,
         state: BuildingState,
-    ) -> BuildingView {
-        BuildingView {
-            coord,
-            state,
-            nodes,
+    ) -> Building {
+        Building {
+            id: rng::uid(),
+            coord: coord,
+            state: state,
+            nodes: nodes,
         }
     }
 

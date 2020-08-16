@@ -5,6 +5,8 @@ use std::fmt::Debug;
 use std::marker::Sized;
 use std::ops::{Add, Div, Mul, Sub};
 
+use serde::{Deserialize, Serialize};
+
 pub fn lerp(a: f32, b: f32, t: f32) -> f32 {
     a * (1.0 - t) + b * t
 }
@@ -24,7 +26,7 @@ pub trait Cell: Debug + Sized + Clone {
     fn coord(&self) -> CellCoord;
 }
 
-#[derive(Debug, Ord, Eq, PartialEq, PartialOrd, Hash, Clone)]
+#[derive(Debug, Ord, Eq, PartialEq, PartialOrd, Hash, Copy, Clone, Serialize, Deserialize)]
 pub struct CellCoord {
     pub x: i32,
     pub y: i32,

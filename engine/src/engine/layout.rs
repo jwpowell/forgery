@@ -1,9 +1,10 @@
 use std::f32::consts::PI;
 
-use super::cell::{Cell, Hex, Point, Rectangle};
+use super::cell::{Cell, CellCoord, Hex, Point, Rectangle};
 
 pub trait Layout {
     type C: Cell;
+    fn cell_from_coord(&self, coord: &CellCoord) -> Self::C;
     fn cell_to_pixel(&self, cell: &Self::C) -> Point;
     fn pixel_to_cell(&self, point: &Point) -> Self::C;
     fn cell_corner_offset(&self, corner: i32) -> Point;
@@ -72,6 +73,11 @@ impl HexLayout {
 
 impl Layout for HexLayout {
     type C = Hex;
+
+    fn cell_from_coord(&self, coord: &CellCoord) -> Self::C {
+        Hex::new(coord.x as f32, coord.y as f32, coord.z as f32)
+    }
+
     fn cell_to_pixel(&self, hex: &Hex) -> Point {
         &self.origin
             + &Point::new(

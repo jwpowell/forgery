@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use crate::engine::CellCoord;
+use crate::engine::{CellCoord, rng};
+
 
 #[derive(Debug, Clone)]
 pub enum Material {
@@ -12,13 +13,17 @@ pub enum Material {
 }
 
 #[derive(Debug, Clone)]
-pub struct BeltView {
+pub struct Belt {
+    pub id: u32,
     pub contents: HashMap<CellCoord, Option<Material>>,
 }
 
-impl BeltView {
-    pub fn new(contents: HashMap<CellCoord, Option<Material>>) -> BeltView {
-        BeltView { contents }
+impl Belt {
+    pub fn new(contents: HashMap<CellCoord, Option<Material>>) -> Belt {
+        Belt {
+            id: rng::uid(),
+            contents: contents,
+        }
     }
 
     pub fn material_at(&self, coord: &CellCoord) -> &Option<Material> {

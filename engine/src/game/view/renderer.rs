@@ -10,15 +10,16 @@ use crate::engine::{
     debug, Cell, CellCoord, Hex, HexLayout, HexOrientation, Layout, Point, Rectangle, World,
 };
 
-use super::belt::BeltView;
-use super::building::{BuildingState, BuildingView};
-use super::world::{GameStateView, WORLD};
+use super::belt::Belt;
+use super::building::{BuildingState, Building};
+use super::world::{GameState, WORLD};
 
 use web_sys::{Document, Element, Event, MouseEvent, SvgElement, SvgsvgElement};
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::*;
 
+/*
 fn game_state() -> GameStateView {
     let mut factory_1_nodes: HashMap<CellCoord, bool> = HashMap::new();
     factory_1_nodes.insert(CellCoord::new(1, 1, 1), false);
@@ -42,6 +43,7 @@ fn game_state() -> GameStateView {
 
     game_state_view
 }
+*/
 
 #[derive(Debug)]
 pub struct RenderError {
