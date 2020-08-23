@@ -6,7 +6,7 @@ use super::cell::{Cell, CellCoord, Point};
 use super::layout::Layout;
 use super::logging::{debug, info};
 use super::renderer::{
-    add_event, add_key_event, add_mouse_event, create_svg, get_document, get_target, Layer,
+    add_event, add_key_event, add_mouse_event, create_svg, get_body, get_target, Layer,
     RenderError, Renderable, UserEvent,
 };
 
@@ -43,30 +43,66 @@ where
         }
     }
 
+    pub fn clear_layer(&mut self, layer_name: &str) {
+        match self.layer_mut(layer_name) {
+            Some(layer) => {
+                layer.clear();
+            }
+            None => {}
+        }
+    }
+
+    pub fn layer(&self, layer_name: &str) -> Option<&Layer> {
+        for layer in &self.layers {
+            if layer.name == layer_name {
+                return Some(&layer);
+            }
+        }
+        None
+    }
+
+    pub fn layer_mut(&mut self, layer_name: &str) -> Option<&mut Layer> {
+        for layer in &mut self.layers {
+            if layer.name == layer_name {
+                return Some(layer);
+            }
+        }
+        None
+    }
+
+    pub fn insert_layer(&mut self, order: usize, layer: Layer) {
+        self.layers.insert(order, layer);
+    }
+
+    pub fn remove_layer(&mut self, layer_name: &str) {
+        self.layers.retain(|layer| layer.name != layer_name);
+    }
+
     pub fn render(&mut self, target_id: &str) -> Result<(), RenderError> {
         debug("rendering world".to_owned());
 
-        let document = get_document()?;
-        let target = get_target(&document, target_id)?;
+        let target = get_target(target_id)?;
 
-        let svg_view = create_svg(&document, -200, -200, 500, 500)?;
+        let svg_view = create_svg(-200, -200, 500, 500)?;
+        svg_view.set_attribute("id", "svg_view")?;
+        target.append_child(&svg_view)?;
 
         for layer in &self.layers {
-            let layer_element = layer.render(&document, &target, &self.layout)?;
-
-            for (_, sprite) in &layer.sprites {
-                sprite.render(&document, &layer_element, &self.layout)?;
-            }
-
-            svg_view.append_child(&layer_element)?;
+            layer.render(&svg_view, &self.layout)?;
         }
-
-        target.append_child(&svg_view)?;
 
         let svg_target = svg_view.dyn_into::<SvgsvgElement>().unwrap();
         self.svg_view = Some(svg_target);
 
         Ok(())
+    }
+
+    pub fn render_layer(&self, layer: &Layer) {
+        let target =
+            get_target("svg_view").expect("failed to get svg_view, call world.render() first");
+        layer
+            .render(&target, &self.layout)
+            .expect(format!("failed to render layer: {:?}", layer.name).as_str());
     }
 
     pub fn event_point(&self, event: &MouseEvent) -> Point {
@@ -94,14 +130,7 @@ where
     where
         H: 'static + FnMut(MouseEvent),
     {
-        add_mouse_event(
-            &get_document()?
-                .body()
-                .expect("body does not exist")
-                .as_ref(),
-            &event,
-            handler,
-        );
+        add_mouse_event(&get_body(), &event, handler);
 
         Ok(())
     }

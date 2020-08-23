@@ -21,6 +21,10 @@ use wasm_bindgen::*;
 
 // ------------ DOM ----------------------
 
+thread_local! {
+    static DOCUMENT: RefCell<Document> = RefCell::new(get_document().expect("failed to get document"));
+}
+
 const SVG_NS: Option<&'static str> = Some("http://www.w3.org/2000/svg");
 
 #[derive(Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
@@ -90,7 +94,7 @@ where
     cl.forget();
 }
 
-pub fn get_document() -> Result<Document, RenderError> {
+fn get_document() -> Result<Document, RenderError> {
     // Use `web_sys`'s global `window` function to get a handle on the global window object.
     let window = web_sys::window().expect("no global `window` exists");
     let document = window.document().expect("should have a document on window");
@@ -99,22 +103,25 @@ pub fn get_document() -> Result<Document, RenderError> {
     Ok(document)
 }
 
-pub fn get_target(document: &Document, target_id: &str) -> Result<Element, RenderError> {
-    Ok(document
-        .get_element_by_id(target_id)
-        .expect(format!("target_id does not exist: {}", target_id).as_str()))
+pub fn get_target(target_id: &str) -> Result<Element, RenderError> {
+    DOCUMENT.with(|doc| -> Result<Element, RenderError> {
+        match doc.borrow().get_element_by_id(target_id) {
+            Some(e) => Ok(e),
+            None => Err(RenderError::new(
+                format!("element {:?} does not exist", target_id).as_str(),
+            )),
+        }
+    })
 }
 
-pub fn create_svg(
-    document: &Document,
-    min_x: i32,
-    min_y: i32,
-    width: i32,
-    height: i32,
-) -> Result<Element, RenderError> {
-    let svg_view = document
-        .create_element_ns(SVG_NS, "svg")
-        .expect("failed to create svg");
+pub fn get_body() -> Element {
+    DOCUMENT.with(|doc| -> Element { doc.borrow().body().expect("body does not exist").into() })
+}
+
+pub fn create_svg(min_x: i32, min_y: i32, width: i32, height: i32) -> Result<Element, RenderError> {
+    let svg_view = DOCUMENT.with(|doc| -> Result<Element, JsValue> {
+        doc.borrow().create_element_ns(SVG_NS, "svg")
+    })?;
 
     svg_view.set_attribute(
         "viewBox",
@@ -129,6 +136,14 @@ pub fn create_svg(
 #[derive(Debug)]
 pub struct RenderError {
     details: String,
+}
+
+impl RenderError {
+    fn new(details: &str) -> RenderError {
+        RenderError {
+            details: details.to_owned(),
+        }
+    }
 }
 
 impl fmt::Display for RenderError {
@@ -276,7 +291,7 @@ impl Sprite {
     where
         H: 'static + FnMut(Event),
     {
-        let sprite_element = get_target(&get_document()?, id)?;
+        let sprite_element = get_target(id)?;
         add_event(&sprite_element, &event, handler);
 
         Ok(())
@@ -286,7 +301,7 @@ impl Sprite {
     where
         H: 'static + FnMut(Event),
     {
-        let sprite_element = get_target(&get_document()?, id)?;
+        let sprite_element = get_target(id)?;
         remove_event(&sprite_element, &event, handler);
 
         Ok(())
@@ -294,7 +309,7 @@ impl Sprite {
 }
 
 pub struct Layer {
-    name: String,
+    pub name: String,
     pub sprites: HashMap<CellCoord, Sprite>,
 }
 
@@ -305,58 +320,94 @@ impl Layer {
             sprites: HashMap::new(),
         }
     }
+
+    pub fn add_sprite(&mut self, coord: CellCoord, sprite: Sprite) {
+        self.sprites.insert(coord, sprite);
+    }
+
+    pub fn remove_sprite(&mut self, sprite_id: String) {
+        // FIXME: Not performant. Must iterate all sprites.
+        self.sprites.retain(|_, sprite| sprite.id != sprite_id);
+    }
 }
 
 impl Renderable for Layer {
-    fn render<C, L>(
-        &self,
-        document: &Document,
-        target: &Element,
-        layout: &L,
-    ) -> Result<Element, RenderError>
+    fn clear(&mut self) -> Result<(), RenderError> {
+        self.sprites.clear();
+
+        let layer_element = get_target(&self.name)?;
+
+        // Clear everything in this layer.
+        layer_element.set_inner_html("");
+
+        Ok(())
+    }
+
+    fn render<C, L>(&self, target: &Element, layout: &L) -> Result<(), RenderError>
     where
         C: Cell,
         L: Layout<C = C>,
     {
-        let layer_view = document.create_element_ns(SVG_NS, "g")?;
+        let layer_view = match get_target(&self.name) {
+            Ok(e) => e,
+            Err(_) => DOCUMENT.with(|doc| -> Result<Element, JsValue> {
+                doc.borrow().create_element_ns(SVG_NS, "g")
+            })?,
+        };
+
         layer_view.set_attribute("id", &self.name)?;
-        Ok(layer_view)
+        target.append_child(&layer_view)?;
+
+        for (_, sprite) in &self.sprites {
+            sprite.render(&layer_view, layout)?;
+        }
+
+        Ok(())
     }
 }
 
 pub trait Renderable {
-    fn render<C, L>(
-        &self,
-        document: &Document,
-        layer: &Element,
-        layout: &L,
-    ) -> Result<Element, RenderError>
+    fn clear(&mut self) -> Result<(), RenderError>;
+
+    fn render<C, L>(&self, layer: &Element, layout: &L) -> Result<(), RenderError>
     where
         C: Cell,
         L: Layout<C = C>;
 }
 
 impl Renderable for Sprite {
-    fn render<C, L>(
-        &self,
-        document: &Document,
-        layer: &Element,
-        layout: &L,
-    ) -> Result<Element, RenderError>
+    fn clear(&mut self) -> Result<(), RenderError> {
+        let sprite_element = get_target(self.id())?;
+
+        // Remove the sprite from the DOM.
+        sprite_element.remove();
+
+        Ok(())
+    }
+
+    fn render<C, L>(&self, layer: &Element, layout: &L) -> Result<(), RenderError>
     where
         C: Cell,
         L: Layout<C = C>,
     {
         // Group all of a sprites data together.
-        let sprite_view = document.create_element_ns(SVG_NS, "g")?;
+        let sprite_view = DOCUMENT.with(|doc| -> Result<Element, JsValue> {
+            doc.borrow().create_element_ns(SVG_NS, "g")
+        })?;
+
         sprite_view.set_attribute("id", self.id())?;
 
         // A sprite is defined as a polygon of any shape.
         let mut width = 0.0;
         let mut height = 0.0;
+
+        let svg_element = DOCUMENT.with(|doc| -> Result<Element, JsValue> {
+            doc.borrow()
+                .create_element_ns(SVG_NS, self.shape.svg_name())
+        })?;
+
         let sprite_polygon = match self.shape {
             Shape::Cell => {
-                let svg_element = document.create_element_ns(SVG_NS, self.shape.svg_name())?;
                 let cell = layout.pixel_to_cell(&self.position);
 
                 let mut corners_string: String = "".to_owned();
@@ -382,7 +433,6 @@ impl Renderable for Sprite {
                 width: rect_width,
                 height: rect_height,
             } => {
-                let svg_element = document.create_element_ns(SVG_NS, self.shape.svg_name())?;
                 svg_element.set_attribute("width", rect_width.to_string().as_str())?;
                 svg_element.set_attribute("height", rect_height.to_string().as_str())?;
                 svg_element.set_attribute("x", (-rect_width as f32 / 2.0).to_string().as_str())?;
@@ -394,7 +444,6 @@ impl Renderable for Sprite {
                 svg_element
             }
             Shape::Circle { radius } => {
-                let svg_element = document.create_element_ns(SVG_NS, self.shape.svg_name())?;
                 svg_element.set_attribute("cx", "0")?;
                 svg_element.set_attribute("cy", "0")?;
                 svg_element.set_attribute("r", radius.to_string().as_str())?;
@@ -413,7 +462,9 @@ impl Renderable for Sprite {
 
         // Set any texture for the sprite as an <image> child of the sprite group.
         if let Some(image) = &self.texture.image {
-            let sprite_image = document.create_element_ns(SVG_NS, "image")?;
+            let sprite_image = DOCUMENT.with(|doc| -> Result<Element, JsValue> {
+                doc.borrow().create_element_ns(SVG_NS, "image")
+            })?;
 
             sprite_image.set_attribute("href", &image)?;
             sprite_image.set_attribute("width", width.to_string().as_str())?;
@@ -434,7 +485,7 @@ impl Renderable for Sprite {
         // Add the sprite to the layer.
         layer.append_child(&sprite_view)?;
 
-        Ok(sprite_view)
+        Ok(())
     }
 }
 /*

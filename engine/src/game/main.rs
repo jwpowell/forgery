@@ -12,7 +12,7 @@ use super::view::{
     Belt, Building, BuildingState, GameState, Material, UserAction, GAME_STATE, WORLD,
 };
 use crate::engine::{
-    alert_js, debug, get_document, get_target, rng, shortest_path, Cell, CellCoord, Hex, HexLayout,
+    alert_js, debug, get_target, rng, shortest_path, Cell, CellCoord, Hex, HexLayout,
     HexOrientation, Layer, Layout, Point, Rectangle, Renderable, Shape, Sprite, Texture,
     TextureBorder, UserEvent,
 };
@@ -47,11 +47,14 @@ pub fn run() -> Result<(), JsValue> {
         let mut cell_coords: Vec<CellCoord> = Vec::new();
         let mut building_sprite_ids: Vec<String> = Vec::new();
 
+        let mut bg_layer = Layer::new("background");
+        let mut building_layer = Layer::new("buildings");
+        let mut belt_layer = Layer::new("belts");
+        let belt_preview_layer = Layer::new("belt_preview");
+
         // Background
         {
             GAME_STATE.with(|game_state| {
-                let mut bg_layer = Layer::new("background");
-
                 let cell_shape = Shape::Cell;
 
                 for coord in &game_state.borrow().world {
@@ -70,15 +73,11 @@ pub fn run() -> Result<(), JsValue> {
                     cell_coords.push(cell.coord());
                     bg_layer.sprites.insert(cell.coord(), sprite);
                 }
-
-                w.borrow_mut().layers.push(bg_layer);
             });
         }
 
         // Buildings
         {
-            let mut building_layer = Layer::new("buildings");
-
             let building_shape = Shape::Rectangle {
                 width: 15,
                 height: 15,
@@ -109,13 +108,9 @@ pub fn run() -> Result<(), JsValue> {
                     BuildingState::Disconnected,
                 ));
             });
-
-            w.borrow_mut().layers.push(building_layer);
         }
         // Belts
         {
-            let mut belt_layer = Layer::new("belts");
-
             let belt_shape = Shape::Cell;
 
             let cell = Cell::new(-2.0, -1.0, 3.0);
@@ -138,8 +133,6 @@ pub fn run() -> Result<(), JsValue> {
                 contents.insert(cell.coord().clone(), None);
                 game_state.borrow_mut().add_belt(Belt::new(contents));
             });
-
-            w.borrow_mut().layers.push(belt_layer);
         }
 
         // Belt previews
@@ -166,11 +159,12 @@ pub fn run() -> Result<(), JsValue> {
                 target.append_child(&belt_preview_view)?;
             }
             */
-
-            let belt_preview_layer = Layer::new("belt_preview");
-
-            w.borrow_mut().layers.push(belt_preview_layer);
         }
+
+        w.borrow_mut().insert_layer(0, bg_layer);
+        w.borrow_mut().insert_layer(1, building_layer);
+        w.borrow_mut().insert_layer(2, belt_layer);
+        w.borrow_mut().insert_layer(3, belt_preview_layer);
 
         w.borrow_mut().render(target_id)?;
 
@@ -251,7 +245,6 @@ pub fn run() -> Result<(), JsValue> {
                                 );
 
                                 if let Some(p) = path {
-                                    // TODO: Draw temporary belt.
                                     debug(format!(
                                         "new belt path found {:?} {:?}",
                                         end,
@@ -261,7 +254,7 @@ pub fn run() -> Result<(), JsValue> {
                                     // Update end to the current cell.
                                     end = Some(current_end.coord());
 
-                                    draw_belt_preview(&p);
+                                    show_belt_preview(&p);
                                 } else {
                                     // Update end with None to show that the current cell is not a valid path.
                                     end = None;
@@ -322,7 +315,7 @@ pub fn run() -> Result<(), JsValue> {
                         }
 
                         game_state.borrow_mut().current_action = None;
-                        clear_belt_preview();
+                        w.borrow_mut().clear_layer("belt_preview");
                     });
                 })
             })?;
@@ -372,25 +365,13 @@ pub fn run() -> Result<(), JsValue> {
     Ok(())
 }
 
-fn clear_belt_preview() {
-    let document = get_document().expect("failed to get document");
-    let belt_preview_layer =
-        get_target(&document, "belt_preview").expect("failed to get 'belt_preview'");
-
-    // Clear all elements in this layer.
-    belt_preview_layer.set_inner_html("");
-}
-
-fn draw_belt_preview<C>(path: &[C])
+fn show_belt_preview<C>(path: &[C])
 where
     C: Cell,
 {
-    let document = get_document().expect("failed to get document");
-    let belt_preview_layer =
-        get_target(&document, "belt_preview").expect("failed to get 'belt_preview'");
-
-    // Clear all elements in this layer.
-    belt_preview_layer.set_inner_html("");
+    WORLD.with(|w| {
+        w.borrow_mut().clear_layer("belt_preview");
+    });
 
     let belt_shape = Shape::Cell;
 
@@ -411,9 +392,15 @@ where
         let belt_preview = Sprite::new(&sprite_id, &belt_shape, &position, &texture);
 
         WORLD.with(|w| {
-            belt_preview
-                .render(&document, &belt_preview_layer, &w.borrow().layout)
-                .expect("failed to render belt preview");
+            w.borrow_mut()
+                .layer_mut("belt_preview")
+                .unwrap()
+                .add_sprite(cell.coord(), belt_preview);
         });
     }
+
+    WORLD.with(|w| {
+        w.borrow()
+            .render_layer(w.borrow().layer("belt_preview").unwrap());
+    });
 }
