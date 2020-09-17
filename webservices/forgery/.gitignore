@@ -1,2 +1,4 @@
 forgery
 .vscode/
+bin/
+pkg/
