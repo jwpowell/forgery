@@ -27,6 +27,6 @@
   "homepage": "https://github.com/jwpowell/forgery#readme",
   "dependencies": {},
   "devDependencies": {
-    "electron": "^9.1.0"
+    "electron": "^9.3.1"
   }
 }
