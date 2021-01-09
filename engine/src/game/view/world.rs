@@ -50,7 +50,7 @@ fn create_hex_world() -> World<Hex, HexLayout> {
         Rectangle::new(10.0, 10.0),
         Point::new(0.0, 0.0),
     );
-    let hex_world = World::new(hex_layout);
+    let hex_world = World::new("workspace", hex_layout, 800, 700).expect("failed to create new world");
 
     hex_world
 }

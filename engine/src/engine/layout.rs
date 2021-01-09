@@ -1,11 +1,13 @@
 use std::f32::consts::PI;
 
-use super::cell::{Cell, CellCoord, Hex, Point, Rectangle};
+use super::cell::{Cell, CellCoord, Hex};
+use std::ops::{Add, Div, Mul, Sub};
 
 pub trait Layout {
     type C: Cell;
     fn cell_from_coord(&self, coord: &CellCoord) -> Self::C;
     fn cell_to_pixel(&self, cell: &Self::C) -> Point;
+    fn pixel_from_coord(&self, coord: &CellCoord) -> Point;
     fn pixel_to_cell(&self, point: &Point) -> Self::C;
     fn cell_corner_offset(&self, corner: i32) -> Point;
     fn polygon_corners(&self, cell: &Self::C) -> Vec<Point>;
@@ -55,6 +57,73 @@ impl HexOrientation {
     }
 }
 
+const ORIGIN: Point = Point { x: 0.0, y: 0.0 };
+
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub struct Point {
+    pub x: f32,
+    pub y: f32,
+}
+
+impl Point {
+    pub fn origin() -> Point {
+        ORIGIN
+    }
+
+    pub fn new(x: f32, y: f32) -> Point {
+        Point { x, y }
+    }
+}
+
+impl Add<&Point> for &Point {
+    type Output = Point;
+
+    fn add(self, rhs: &Point) -> Point {
+        Point::new(self.x + rhs.x, self.y + rhs.y)
+    }
+}
+
+impl Sub<&Point> for &Point {
+    type Output = Point;
+
+    fn sub(self, rhs: &Point) -> Point {
+        Point::new(self.x - rhs.x, self.y - rhs.y)
+    }
+}
+
+impl Mul<f32> for &Point {
+    type Output = Point;
+
+    fn mul(self, rhs: f32) -> Point {
+        Point::new(self.x * rhs, self.y * rhs)
+    }
+}
+
+impl Div<f32> for &Point {
+    type Output = Point;
+
+    fn div(self, rhs: f32) -> Point {
+        Point::new(self.x / rhs, self.y / rhs)
+    }
+}
+
+impl From<&Point> for String {
+    fn from(point: &Point) -> Self {
+        format!("{},{}", point.x, point.y)
+    }
+}
+
+pub struct Rectangle {
+    pub width: f32,
+    pub height: f32,
+}
+
+impl Rectangle {
+    pub fn new(width: f32, height: f32) -> Rectangle {
+        Rectangle { width, height }
+    }
+}
+
 pub struct HexLayout {
     orientation: HexOrientation,
     size: Rectangle,
@@ -84,6 +153,10 @@ impl Layout for HexLayout {
                 (self.orientation.f0 * hex.q + self.orientation.f1 * hex.r) * self.size.width,
                 (self.orientation.f2 * hex.q + self.orientation.f3 * hex.r) * self.size.height,
             )
+    }
+
+    fn pixel_from_coord(&self, coord: &CellCoord) -> Point {
+        self.cell_to_pixel(&self.cell_from_coord(coord))
     }
 
     fn pixel_to_cell(&self, point: &Point) -> Hex {

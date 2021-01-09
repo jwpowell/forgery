@@ -23,10 +23,6 @@ use wasm_bindgen::*;
 use web_sys::{Document, Element, Event, HtmlElement, MouseEvent};
 
 pub fn run() -> Result<(), JsValue> {
-    let target_id = "workspace";
-
-    debug(format!("target_id: {:?}", target_id));
-
     //alert(format!("target_id: {}", target_id).as_str());
     /*
         let mut world = create_hex_world();
@@ -161,12 +157,13 @@ pub fn run() -> Result<(), JsValue> {
             */
         }
 
-        w.borrow_mut().insert_layer(0, bg_layer);
-        w.borrow_mut().insert_layer(1, building_layer);
-        w.borrow_mut().insert_layer(2, belt_layer);
-        w.borrow_mut().insert_layer(3, belt_preview_layer);
+        w.borrow_mut().viewport.insert_layer(0, bg_layer);
+        w.borrow_mut().viewport.insert_layer(1, building_layer);
+        w.borrow_mut().viewport.insert_layer(2, belt_layer);
+        w.borrow_mut().viewport.insert_layer(3, belt_preview_layer);
 
-        w.borrow_mut().render(target_id)?;
+        w.borrow_mut().look_at(&Point::new(0.0, 0.0))?;
+        w.borrow_mut().render()?;
 
         // Attach an event to a building.
         for building_sprite_id in &building_sprite_ids {
@@ -193,7 +190,10 @@ pub fn run() -> Result<(), JsValue> {
         w.borrow()
             .on_mouse_event(UserEvent::MouseDown, |event: web_sys::MouseEvent| {
                 WORLD.with(|w| {
-                    let cell = w.borrow().event_cell(&event);
+                    let cell = w
+                        .borrow()
+                        .event_cell(&event)
+                        .expect("failed to get event cell");
 
                     // FIXME: Need to check if starting from building node. Otherwise, every mouse down will start placing a belt.
                     GAME_STATE.with(|game_state| {
@@ -220,7 +220,10 @@ pub fn run() -> Result<(), JsValue> {
         w.borrow()
             .on_mouse_event(UserEvent::MouseMove, |event: web_sys::MouseEvent| {
                 WORLD.with(|w| {
-                    let cell = w.borrow().event_cell(&event);
+                    let cell = w
+                        .borrow()
+                        .event_cell(&event)
+                        .expect("failed to get event cell");
 
                     // FIXME: Need to check if starting from building node. Otherwise, every mouse down will start placing a belt.
                     GAME_STATE.with(|game_state| {
@@ -308,6 +311,18 @@ pub fn run() -> Result<(), JsValue> {
                                 if let Some(p) = path {
                                     // TODO: Draw final belt.
                                     debug(format!("drawing belt {:?}", p));
+
+                                    // Look at the end of the belt.
+                                    let end_position = w
+                                        .borrow()
+                                        .layout
+                                        .pixel_from_coord(&end.expect("end belt path is None"));
+                                    w.borrow_mut()
+                                        .look_at(&end_position)
+                                        .expect("failed to look at end position");
+                                    debug(format!("looking at {:?}", &end_position));
+                                    //w.borrow_mut().camera_mut(0).look_at(&Point::new(0.0,0.0));
+                                    w.borrow_mut().render().expect("failed to render");
                                 } else {
                                     debug(format!("no valid path"));
                                 }
@@ -315,7 +330,10 @@ pub fn run() -> Result<(), JsValue> {
                         }
 
                         game_state.borrow_mut().current_action = None;
-                        w.borrow_mut().clear_layer("belt_preview");
+                        w.borrow_mut()
+                            .viewport
+                            .clear_layer("belt_preview")
+                            .expect("failed to clear belt_preview");
                     });
                 })
             })?;
@@ -370,7 +388,10 @@ where
     C: Cell,
 {
     WORLD.with(|w| {
-        w.borrow_mut().clear_layer("belt_preview");
+        w.borrow_mut()
+            .viewport
+            .clear_layer("belt_preview")
+            .expect("failed to clear belt_preview");
     });
 
     let belt_shape = Shape::Cell;
@@ -393,6 +414,7 @@ where
 
         WORLD.with(|w| {
             w.borrow_mut()
+                .viewport
                 .layer_mut("belt_preview")
                 .unwrap()
                 .add_sprite(cell.coord(), belt_preview);
@@ -400,7 +422,6 @@ where
     }
 
     WORLD.with(|w| {
-        w.borrow()
-            .render_layer(w.borrow().layer("belt_preview").unwrap());
+        w.borrow_mut().render_layer("belt_preview");
     });
 }

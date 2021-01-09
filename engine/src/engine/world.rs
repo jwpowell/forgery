@@ -2,12 +2,12 @@ use std::cmp;
 use std::cmp::{Ord, Ordering, Reverse};
 use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 
-use super::cell::{Cell, CellCoord, Point};
-use super::layout::Layout;
+use super::cell::{Cell, CellCoord};
+use super::layout::{Layout, Point, Rectangle};
 use super::logging::{debug, info};
 use super::renderer::{
-    add_event, add_key_event, add_mouse_event, create_svg, get_body, get_target, Layer,
-    RenderError, Renderable, UserEvent,
+    add_event, add_key_event, add_mouse_event, create_svg, get_body, get_target, Camera, Layer,
+    RenderError, Renderable, UserEvent, Viewport,
 };
 
 use web_sys::{Document, Element, Event, MouseEvent, SvgElement, SvgsvgElement};
@@ -24,9 +24,10 @@ where
     L: Layout<C = C>,
 {
     pub base_map: HashSet<CellCoord>,
-    pub layers: Vec<Layer>,
     pub layout: L,
-    svg_view: Option<SvgsvgElement>,
+    pub viewport: Viewport,
+    cameras: Vec<Camera>,
+    active_camera: usize,
 }
 
 impl<C, L> World<C, L>
@@ -34,96 +35,77 @@ where
     C: Cell,
     L: Layout<C = C>,
 {
-    pub fn new(layout: L) -> World<C, L> {
-        World {
+    pub fn new(
+        target_id: &str,
+        layout: L,
+        width: i32,
+        height: i32,
+    ) -> Result<World<C, L>, RenderError> {
+        Ok(World {
             base_map: HashSet::new(),
-            layers: Vec::new(),
             layout: layout,
-            svg_view: None,
-        }
+            viewport: Viewport::new(target_id, width, height)?,
+            cameras: vec![Camera::new(width, height)],
+            active_camera: 0,
+        })
     }
 
-    pub fn clear_layer(&mut self, layer_name: &str) {
-        match self.layer_mut(layer_name) {
-            Some(layer) => {
-                layer.clear();
-            }
-            None => {}
-        }
+    pub fn camera(&self, id: usize) -> &Camera {
+        &self.cameras[id]
     }
 
-    pub fn layer(&self, layer_name: &str) -> Option<&Layer> {
-        for layer in &self.layers {
-            if layer.name == layer_name {
-                return Some(&layer);
-            }
-        }
-        None
+    pub fn camera_mut(&mut self, id: usize) -> &mut Camera {
+        &mut self.cameras[id]
     }
 
-    pub fn layer_mut(&mut self, layer_name: &str) -> Option<&mut Layer> {
-        for layer in &mut self.layers {
-            if layer.name == layer_name {
-                return Some(layer);
-            }
-        }
-        None
+    pub fn active_camera(&self) -> usize {
+        self.active_camera
     }
 
-    pub fn insert_layer(&mut self, order: usize, layer: Layer) {
-        self.layers.insert(order, layer);
-    }
-
-    pub fn remove_layer(&mut self, layer_name: &str) {
-        self.layers.retain(|layer| layer.name != layer_name);
-    }
-
-    pub fn render(&mut self, target_id: &str) -> Result<(), RenderError> {
-        debug("rendering world".to_owned());
-
-        let target = get_target(target_id)?;
-
-        let svg_view = create_svg(-200, -200, 500, 500)?;
-        svg_view.set_attribute("id", "svg_view")?;
-        target.append_child(&svg_view)?;
-
-        for layer in &self.layers {
-            layer.render(&svg_view, &self.layout)?;
+    pub fn set_active_camera(&mut self, id: usize) -> Result<(), RenderError> {
+        if id >= self.cameras.len() {
+            return Err(RenderError::new("invalid camera id"));
         }
 
-        let svg_target = svg_view.dyn_into::<SvgsvgElement>().unwrap();
-        self.svg_view = Some(svg_target);
+        self.active_camera = id;
 
         Ok(())
     }
 
-    pub fn render_layer(&self, layer: &Layer) {
-        let target =
-            get_target("svg_view").expect("failed to get svg_view, call world.render() first");
-        layer
-            .render(&target, &self.layout)
-            .expect(format!("failed to render layer: {:?}", layer.name).as_str());
+    pub fn look_at(&mut self, position: &Point) -> Result<(), RenderError> {
+        // FIXME: This is awkward.
+        self.camera_mut(self.active_camera()).look_at(position);
+        let camera = self.camera_mut(self.active_camera()).clone();
+        self.viewport.look_at(&camera)?;
+        Ok(())
     }
 
-    pub fn event_point(&self, event: &MouseEvent) -> Point {
-        // Get point in global SVG space
-        let svg_target = self.svg_view.as_ref().expect("svg not set");
-        let svg_matrix = svg_target
-            .get_screen_ctm()
-            .expect("failed to get screen ctm")
-            .inverse()
-            .expect("failed to get inverse");
-        let svg_point = svg_target.create_svg_point();
-        svg_point.set_x(event.client_x() as f32);
-        svg_point.set_y(event.client_y() as f32);
-        let svg_point = svg_point.matrix_transform(&svg_matrix);
+    pub fn render(&mut self) -> Result<(), RenderError> {
+        debug("rendering world".to_owned());
 
-        Point::new(svg_point.x(), svg_point.y())
+        self.viewport.render(&self.layout)?;
+
+        debug("world rendered".to_owned());
+
+        Ok(())
     }
 
-    pub fn event_cell(&self, event: &MouseEvent) -> C {
-        let pixel = self.event_point(event);
-        self.layout.pixel_to_cell(&pixel)
+    pub fn render_layer(&mut self, layer_name: &str) {
+        self.viewport
+            .layer_mut(layer_name)
+            .expect("layer does not exist")
+            .clear()
+            .expect("failed to clear layer on render layer");
+        self.viewport
+            .layer(layer_name)
+            .expect("layer does not exist")
+            .render(&self.layout)
+            .expect(format!("failed to render layer: {:?}", layer_name).as_str());
+    }
+
+    pub fn event_cell(&self, event: &MouseEvent) -> Result<C, RenderError> {
+        let pixel = self.viewport.event_point(event)?;
+        Ok(self.layout.pixel_to_cell(&pixel))
     }
 
     pub fn on_mouse_event<H>(&self, event: UserEvent, handler: H) -> Result<(), JsValue>

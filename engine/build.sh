@@ -4,7 +4,7 @@ set -ex
 
 rustup target add wasm32-unknown-unknown
 # This must match the same version as in Cargo.toml
-cargo install --version 0.2.67 wasm-bindgen-cli
+cargo install --version 0.2.69 wasm-bindgen-cli
 
 cargo build --target wasm32-unknown-unknown --release
 rm -rf wasm
