@@ -90,12 +90,15 @@ where
         Ok(())
     }
 
-    pub fn render_layer(&mut self, layer_name: &str) {
+    pub fn clear_layer(&mut self, layer_name: &str) {
         self.viewport
             .layer_mut(layer_name)
             .expect("layer does not exist")
             .clear()
             .expect("failed to clear layer on render layer");
+    }
+
+    pub fn render_layer(&self, layer_name: &str) {
         self.viewport
             .layer(layer_name)
             .expect("layer does not exist")

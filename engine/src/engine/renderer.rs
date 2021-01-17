@@ -7,7 +7,7 @@ use std::fmt;
 
 use crate::engine;
 use crate::engine::{
-    debug, Cell, CellCoord, Hex, HexLayout, HexOrientation, Layout, Point, Rectangle,
+    debug, error, Cell, CellCoord, Hex, HexLayout, HexOrientation, Layout, Point, Rectangle,
 };
 
 // use super::belt::BeltView;
@@ -518,12 +518,18 @@ impl Renderable for Layer {
     fn clear(&mut self) -> Result<(), RenderError> {
         let layer_view = match get_target(&self.name) {
             Ok(e) => e,
-            Err(_) => return Ok(()), // Ignore errors on clear. The elements might not exist.
+            Err(_) => {
+                error(format!("failed to clear layer: {}", self.name));
+                return Ok(()); // Ignore errors on clear. The elements might not exist.
+            }
         };
 
         for (_, sprite) in &mut self.sprites {
             sprite.clear()?;
         }
+
+        // Remove all sprite objects.
+        self.sprites.clear();
 
         // Clear everything in this layer.
         layer_view.set_inner_html("");

@@ -162,7 +162,6 @@ pub fn run() -> Result<(), JsValue> {
         w.borrow_mut().viewport.insert_layer(2, belt_layer);
         w.borrow_mut().viewport.insert_layer(3, belt_preview_layer);
 
-        w.borrow_mut().look_at(&Point::new(0.0, 0.0))?;
         w.borrow_mut().render()?;
 
         // Attach an event to a building.
@@ -317,11 +316,11 @@ pub fn run() -> Result<(), JsValue> {
                                         .borrow()
                                         .layout
                                         .pixel_from_coord(&end.expect("end belt path is None"));
+                                    // Look at the end of the belt.
                                     w.borrow_mut()
                                         .look_at(&end_position)
                                         .expect("failed to look at end position");
                                     debug(format!("looking at {:?}", &end_position));
-                                    //w.borrow_mut().camera_mut(0).look_at(&Point::new(0.0,0.0));
                                     w.borrow_mut().render().expect("failed to render");
                                 } else {
                                     debug(format!("no valid path"));
@@ -388,10 +387,7 @@ where
     C: Cell,
 {
     WORLD.with(|w| {
-        w.borrow_mut()
-            .viewport
-            .clear_layer("belt_preview")
-            .expect("failed to clear belt_preview");
+        w.borrow_mut().clear_layer("belt_preview");
     });
 
     let belt_shape = Shape::Cell;
