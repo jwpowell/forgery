@@ -1,24 +1,11 @@
-use std::cell::{Ref, RefCell};
-use std::cmp;
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
-use std::convert::From;
-use std::error::Error;
-use std::fmt;
-use std::fs::File;
 
-use ron::de::from_reader;
-use serde::{Deserialize, Serialize};
-
-use crate::engine;
-use crate::engine::{
-    debug, Cell, CellCoord, Hex, HexLayout, HexOrientation, Layout, Point, Rectangle, World,
-};
+use crate::engine::{CellCoord, Hex, HexLayout, HexOrientation, Point, Rectangle, World};
 
 use super::belt::Belt;
-use super::building::{Building, BuildingState};
+use super::building::Building;
 use super::map_hex::hex_map;
-
-use web_sys::{Document, Element, Event, MouseEvent, SvgElement, SvgsvgElement};
 
 // We cannot have mutable statics by default so we use this to enable it.
 thread_local! {
@@ -50,7 +37,8 @@ fn create_hex_world() -> World<Hex, HexLayout> {
         Rectangle::new(10.0, 10.0),
         Point::new(0.0, 0.0),
     );
-    let hex_world = World::new("workspace", hex_layout, 800, 700).expect("failed to create new world");
+    let hex_world =
+        World::new("workspace", hex_layout, 800, 700).expect("failed to create new world");
 
     hex_world
 }
@@ -128,46 +116,4 @@ impl GameState {
         }
         return None;
     }
-
-    /*
-    pub fn new(buildings: &[BuildingView], belts: &[BeltView]) -> GameState {
-        let mut buildings_map: HashMap<CellCoord, BuildingView> = HashMap::new();
-        let mut belts_map: HashMap<CellCoord, Vec<BeltView>> = HashMap::new();
-        let mut collision_set: HashSet<CellCoord> = HashSet::new();
-
-        for building in buildings {
-            buildings_map.insert(building.coord.clone(), building.clone());
-            collision_set.insert(building.coord.clone());
-        }
-
-        for belt in belts {
-            for (coord, _) in &belt.contents {
-                let cell_belts = belts_map.entry(coord.clone()).or_insert(Vec::new());
-                cell_belts.push(belt.clone());
-                collision_set.insert(coord.clone());
-            }
-        }
-
-        GameState {
-            buildings_map,
-            belts_map,
-            collision_set,
-        }
-    }
-
-    */
 }
-
-// pub fn generate_hexgon(&mut self, radius: i32) {
-//     self.cells.clear();
-
-//     for q in -radius..=radius {
-//         let r1 = cmp::max(-radius, -q - radius);
-//         let r2 = cmp::min(radius, -q + radius);
-
-//         for r in r1..=r2 {
-//             let cell = C::new(q as f32, r as f32, (-q - r) as f32);
-//             self.cells.insert(cell.coord(), cell);
-//         }
-//     }
-// }

@@ -1,19 +1,16 @@
-use std::cmp;
 use std::cmp::{Ord, Ordering, Reverse};
-use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 
 use super::cell::{Cell, CellCoord};
-use super::layout::{Layout, Point, Rectangle};
+use super::layout::{Layout, Point};
 use super::logging::{debug, info};
 use super::renderer::{
-    add_event, add_key_event, add_mouse_event, create_svg, get_body, get_target, Camera, Layer,
-    RenderError, Renderable, UserEvent, Viewport,
+    add_mouse_event, get_body, Camera, RenderError, Renderable, UserEvent, Viewport,
 };
 
-use web_sys::{Document, Element, Event, MouseEvent, SvgElement, SvgsvgElement};
+use web_sys::MouseEvent;
 
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::*;
 
 // TODO: This will eventually be more complex and involve movement costs, etc.
 type Collisions = HashSet<CellCoord>;
@@ -247,30 +244,3 @@ fn a_star_search<C: Cell>(
     // Could not find any path.
     None
 }
-
-/*
-def heuristic(a, b):
-    (x1, y1) = a
-    (x2, y2) = b
-    return abs(x1 - x2) + abs(y1 - y2)
-
-def a_star_search(graph, start, goal):
-    frontier = PriorityQueue()
-    frontier.put(start, 0)
-    came_from = {}
-    cost_so_far = {}
-    came_from[start] = None
-    cost_so_far[start] = 0
-    while not frontier.empty():
-        current = frontier.get()
-        if current == goal:
-            break
-        for next in graph.neighbors(current):
-            new_cost = cost_so_far[current] + graph.cost(current, next)
-            if next not in cost_so_far or new_cost < cost_so_far[next]:
-                cost_so_far[next] = new_cost
-                priority = new_cost + heuristic(goal, next)
-                frontier.put(next, priority)
-                came_from[next] = current
-    return came_from, cost_so_far
-*/

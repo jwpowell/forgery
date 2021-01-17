@@ -1,41 +1,16 @@
 // This is the main controller for setting up the game.
 
-use std::cell::{Ref, RefCell};
-use std::cmp;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
-use ron::ser::{to_string_pretty, PrettyConfig};
-use serde::Serialize;
-use std::iter::FromIterator;
-
-use super::view::{
-    Belt, Building, BuildingState, GameState, Material, UserAction, GAME_STATE, WORLD,
-};
+use super::view::{Belt, Building, BuildingState, Material, UserAction, GAME_STATE, WORLD};
 use crate::engine::{
-    alert_js, debug, get_target, rng, shortest_path, Cell, CellCoord, Hex, HexLayout,
-    HexOrientation, Layer, Layout, Point, Rectangle, Renderable, Shape, Sprite, Texture,
+    debug, rng, shortest_path, Cell, CellCoord, Layer, Layout, Point, Shape, Sprite, Texture,
     TextureBorder, UserEvent,
 };
 
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::*;
-
-use web_sys::{Document, Element, Event, HtmlElement, MouseEvent};
 
 pub fn run() -> Result<(), JsValue> {
-    //alert(format!("target_id: {}", target_id).as_str());
-    /*
-        let mut world = create_hex_world();
-
-        WORLD.with(|w| {
-            *w = RefCell::new(world);
-        });
-
-        world.generate_hexgon(10);
-
-        world.render(target_id)?;
-    */
-
     WORLD.with(|w| -> Result<(), JsValue> {
         debug(format!("generating world"));
 
@@ -129,32 +104,6 @@ pub fn run() -> Result<(), JsValue> {
                 contents.insert(cell.coord().clone(), None);
                 game_state.borrow_mut().add_belt(Belt::new(contents));
             });
-        }
-
-        // Belt previews
-        {
-            /*
-            // Render hidden belt routing for displaying where belt will be placed if accepted.
-            // Add nodes to each edge.
-            for direction in cell.directions() {
-                let belt_preview_view =
-                    document.create_element_ns(Some("http://www.w3.org/2000/svg"), "line")?;
-                let edge_center = self.layout.polygon_edge_center(cell, *direction);
-                belt_preview_view.set_attribute("x1", (edge_center.x).to_string().as_str())?;
-                belt_preview_view.set_attribute("y1", (edge_center.y).to_string().as_str())?;
-                belt_preview_view.set_attribute("x2", (self.layout.origin().x).to_string().as_str())?;
-                belt_preview_view.set_attribute("y2", (self.layout.origin().y).to_string().as_str())?;
-                belt_preview_view.set_attribute("style", "fill:gray;stroke:black;stroke-width:1")?;
-                belt_preview_view.set_attribute("class", "belt-preview")?;
-
-                belt_preview_view.set_attribute(
-                    "transform",
-                    format!("translate({},{})", cell_center.x, cell_center.y).as_str(),
-                )?;
-
-                target.append_child(&belt_preview_view)?;
-            }
-            */
         }
 
         w.borrow_mut().viewport.insert_layer(0, bg_layer);
@@ -336,45 +285,6 @@ pub fn run() -> Result<(), JsValue> {
                     });
                 })
             })?;
-
-        /*
-                // Events
-                {
-                    let mut events_layer = Layer::new("events");
-
-                    let event_shape = Shape::Cell;
-
-                    let mut event_sprites: Vec<Sprite> = Vec::new();
-
-                    for cell_coord in &cell_coords {
-
-                        let cell = Cell::new(cell_coord.x as f32, cell_coord.y as f32, cell_coord.z as f32);
-                        let position = w.borrow().layout.cell_to_pixel(&cell);
-
-                        let sprite_id = (rng.rand_range(1,1000000000) as f32 + position.x + position.y).to_string();
-                        let event_sprite = Sprite::new(sprite_id, &event_shape, &position, &Texture::new());
-
-                        events_layer.sprites.insert(cell.coord(), event_sprite.clone());
-
-                        event_sprites.push(event_sprite);
-                    }
-
-                    w.borrow_mut().layers.push(events_layer);
-
-                    w.borrow().render(target_id)?;
-
-
-                    for event_sprite in &event_sprites {
-
-                        let id = event_sprite.position.clone();
-                        Sprite::on(&event_sprite.id(), UserEvent::MouseClick, move |_| {
-                            alert_js(format!("Hello from {:?}", id));
-                        })?;
-
-                    }
-
-                }
-        */
 
         Ok(())
     })?;

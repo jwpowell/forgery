@@ -1,20 +1,12 @@
-use std::cell::{Ref, RefCell};
-use std::cmp;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::convert::From;
 use std::error::Error;
 use std::fmt;
 
-use crate::engine;
-use crate::engine::{
-    debug, error, Cell, CellCoord, Hex, HexLayout, HexOrientation, Layout, Point, Rectangle,
-};
+use crate::engine::{debug, error, Cell, CellCoord, Layout, Point};
 
-// use super::belt::BeltView;
-// use super::building::{BuildingState, BuildingView};
-// use super::world::{GameStateView, WORLD};
-
-use web_sys::{Document, Element, Event, KeyEvent, MouseEvent, SvgElement, SvgsvgElement};
+use web_sys::{Document, Element, Event, KeyEvent, MouseEvent, SvgsvgElement};
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::*;
